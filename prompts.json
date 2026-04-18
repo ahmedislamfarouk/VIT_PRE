@@ -1,0 +1,62 @@
+{
+  "beach.jpg": {
+    "basic": ["a beach", "ocean and sand"],
+    "descriptive": ["a sunny beach with blue water and white sand", "gentle waves crashing on a tropical shore"],
+    "contextual": ["a relaxing vacation destination", "a coastal landscape at noon"],
+    "adversarial": ["a snowy mountain", "a crowded city street"]
+  },
+  "bird.jpg": {
+    "basic": ["a bird", "a small animal with feathers"],
+    "descriptive": ["a colorful bird perched on a branch", "a small sparrow in the forest"],
+    "contextual": ["wildlife in its natural habitat", "a creature capable of flight"],
+    "adversarial": ["a swimming fish", "a roaring lion"]
+  },
+  "car.jpg": {
+    "basic": ["a car", "a vehicle"],
+    "descriptive": ["a sleek red sports car", "a modern automobile parked on the street"],
+    "contextual": ["a mode of urban transportation", "an engine-powered machine for travel"],
+    "adversarial": ["a wooden boat", "a flying airplane"]
+  },
+  "cat.jpg": {
+    "basic": ["a cat", "a small feline"],
+    "descriptive": ["a fluffy ginger cat sitting down", "a domestic cat with whiskers"],
+    "contextual": ["a common household pet", "a predator from the Felidae family"],
+    "adversarial": ["a barking dog", "a wild horse"]
+  },
+  "coffee.jpg": {
+    "basic": ["a cup of coffee", "a hot drink"],
+    "descriptive": ["a steaming mug of black coffee on a table", "latte art in a white ceramic cup"],
+    "contextual": ["a morning caffeine boost", "a beverage served in a cafe"],
+    "adversarial": ["a cold glass of water", "a bowl of hot soup"]
+  },
+  "dog.jpg": {
+    "basic": ["a dog", "a canine"],
+    "descriptive": ["a golden retriever puppy playing", "a large brown dog standing in the grass"],
+    "contextual": ["man's best friend", "a loyal domestic animal"],
+    "adversarial": ["a meowing cat", "a hamster in a cage"]
+  },
+  "guitar.jpg": {
+    "basic": ["a guitar", "a musical instrument"],
+    "descriptive": ["an acoustic guitar leaning against a wall", "a wooden stringed instrument"],
+    "contextual": ["something used to play music", "an artist's tool for composition"],
+    "adversarial": ["a grand piano", "a set of drums"]
+  },
+  "mountain.jpg": {
+    "basic": ["a mountain", "high peaks"],
+    "descriptive": ["snow-capped mountain peaks under a clear sky", "a rugged mountain range at sunset"],
+    "contextual": ["a majestic natural wonder", "a high altitude landscape"],
+    "adversarial": ["a flat desert plain", "a deep underwater cave"]
+  },
+  "pizza.jpg": {
+    "basic": ["a pizza", "food"],
+    "descriptive": ["a hot pizza with melted cheese and pepperoni", "a delicious Italian dish on a wooden board"],
+    "contextual": ["a popular choice for dinner", "fast food usually served in a box"],
+    "adversarial": ["a fresh green salad", "a chocolate cake"]
+  },
+  "tree.jpg": {
+    "basic": ["a tree", "a plant"],
+    "descriptive": ["a tall green tree with many leaves", "an old oak tree in a field"],
+    "contextual": ["a vital part of the ecosystem", "nature's oxygen producer"],
+    "adversarial": ["a steel skyscraper", "a plastic flower"]
+  }
+}
