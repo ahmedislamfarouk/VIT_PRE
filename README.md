@@ -11,7 +11,9 @@ This project fulfills all requirements specified in `REQ.txt` and the university
 | **All equations** | `Scientific_Paper_and_Architecture_Definition.md` | Mathematical definitions for Attention, MSA, MLP, and Embeddings. |
 | **Drawbacks & Advantages** | `Scientific_Paper_and_Architecture_Definition.md` | Comprehensive list of ViT pros (scaling) and cons (data hunger). |
 | **Vision for enhancement** | `Scientific_Paper_and_Architecture_Definition.md` | Section on Hybrid models, Linear Attention, and Self-Supervision. |
-| **Write a Scientific paper** | `Scientific_Paper_and_Architecture_Definition.md` | A complete, formally structured academic paper. |
+| **Write a Scientific paper** | `Scientific_Paper_and_Architecture_Definition.md` | A complete, formally structured academic paper (Markdown). |
+| **High-Quality LaTeX Paper** | `Vision_Transformer_Scientific_Paper.tex` | Deep, academically rigorous LaTeX source with advanced derivations. |
+| **Compiled PDF Paper** | `Vision_Transformer_Scientific_Paper.pdf` | The professional PDF version of the research paper. |
 | **Valuable presentation** | `Vision_Transformer_Presentation.md` | A slide-based summary of the project (Marp compatible). |
 | **Experimental Analysis** | `Final_Comparison_Report.md` | The generated output comparing the three models' accuracy and confidence. |
 
