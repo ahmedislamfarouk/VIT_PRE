@@ -1,422 +1,1268 @@
 {
-  "beach.jpg": [
-    {
-      "prompt": "a beach",
-      "category": "basic",
-      "score": 0.6728515625
-    },
-    {
-      "prompt": "ocean and sand",
-      "category": "basic",
-      "score": 0.1927490234375
-    },
-    {
-      "prompt": "a sunny beach with blue water and white sand",
-      "category": "descriptive",
-      "score": 0.07550048828125
-    },
-    {
-      "prompt": "a coastal landscape at noon",
-      "category": "contextual",
-      "score": 0.0282135009765625
-    },
-    {
-      "prompt": "a relaxing vacation destination",
-      "category": "contextual",
-      "score": 0.0155792236328125
-    },
-    {
-      "prompt": "gentle waves crashing on a tropical shore",
-      "category": "descriptive",
-      "score": 0.01486968994140625
-    },
-    {
-      "prompt": "a snowy mountain",
-      "category": "adversarial",
-      "score": 0.00013697147369384766
-    },
-    {
-      "prompt": "a crowded city street",
-      "category": "adversarial",
-      "score": 9.47713851928711e-06
-    }
-  ],
-  "bird.jpg": [
-    {
-      "prompt": "a bird",
-      "category": "basic",
-      "score": 0.81982421875
-    },
-    {
-      "prompt": "a colorful bird perched on a branch",
-      "category": "descriptive",
-      "score": 0.158935546875
-    },
-    {
-      "prompt": "a small animal with feathers",
-      "category": "basic",
-      "score": 0.01081085205078125
-    },
-    {
-      "prompt": "a small sparrow in the forest",
-      "category": "descriptive",
-      "score": 0.00766754150390625
-    },
-    {
-      "prompt": "a creature capable of flight",
-      "category": "contextual",
-      "score": 0.002376556396484375
-    },
-    {
-      "prompt": "a swimming fish",
-      "category": "adversarial",
-      "score": 0.0002503395080566406
-    },
-    {
-      "prompt": "wildlife in its natural habitat",
-      "category": "contextual",
-      "score": 0.00019812583923339844
-    },
-    {
-      "prompt": "a roaring lion",
-      "category": "adversarial",
-      "score": 1.3709068298339844e-05
-    }
-  ],
-  "car.jpg": [
-    {
-      "prompt": "a car",
-      "category": "basic",
-      "score": 0.53125
-    },
-    {
-      "prompt": "a vehicle",
-      "category": "basic",
-      "score": 0.46142578125
-    },
-    {
-      "prompt": "a modern automobile parked on the street",
-      "category": "descriptive",
-      "score": 0.003749847412109375
-    },
-    {
-      "prompt": "a sleek red sports car",
-      "category": "descriptive",
-      "score": 0.00197601318359375
-    },
-    {
-      "prompt": "a mode of urban transportation",
-      "category": "contextual",
-      "score": 0.0011987686157226562
-    },
-    {
-      "prompt": "an engine-powered machine for travel",
-      "category": "contextual",
-      "score": 0.0003597736358642578
-    },
-    {
-      "prompt": "a flying airplane",
-      "category": "adversarial",
-      "score": 0.00031256675720214844
-    },
-    {
-      "prompt": "a wooden boat",
-      "category": "adversarial",
-      "score": 4.297494888305664e-05
-    }
-  ],
-  "cat.jpg": [
-    {
-      "prompt": "a cat",
-      "category": "basic",
-      "score": 0.75146484375
-    },
-    {
-      "prompt": "a small feline",
-      "category": "basic",
-      "score": 0.1842041015625
-    },
-    {
-      "prompt": "a predator from the Felidae family",
-      "category": "contextual",
-      "score": 0.034088134765625
-    },
-    {
-      "prompt": "a domestic cat with whiskers",
-      "category": "descriptive",
-      "score": 0.024169921875
-    },
-    {
-      "prompt": "a common household pet",
-      "category": "contextual",
-      "score": 0.00453948974609375
-    },
-    {
-      "prompt": "a barking dog",
-      "category": "adversarial",
-      "score": 0.0007071495056152344
-    },
-    {
-      "prompt": "a fluffy ginger cat sitting down",
-      "category": "descriptive",
-      "score": 0.0004222393035888672
-    },
-    {
-      "prompt": "a wild horse",
-      "category": "adversarial",
-      "score": 0.0001760721206665039
-    }
-  ],
-  "coffee.jpg": [
-    {
-      "prompt": "a cup of coffee",
-      "category": "basic",
-      "score": 0.66064453125
-    },
-    {
-      "prompt": "a hot drink",
-      "category": "basic",
-      "score": 0.140625
-    },
-    {
-      "prompt": "a steaming mug of black coffee on a table",
-      "category": "descriptive",
-      "score": 0.1280517578125
-    },
-    {
-      "prompt": "a morning caffeine boost",
-      "category": "contextual",
-      "score": 0.05419921875
-    },
-    {
-      "prompt": "a beverage served in a cafe",
-      "category": "contextual",
-      "score": 0.01067352294921875
-    },
-    {
-      "prompt": "latte art in a white ceramic cup",
-      "category": "descriptive",
-      "score": 0.0055389404296875
-    },
-    {
-      "prompt": "a bowl of hot soup",
-      "category": "adversarial",
-      "score": 0.0004203319549560547
-    },
-    {
-      "prompt": "a cold glass of water",
-      "category": "adversarial",
-      "score": 5.1021575927734375e-05
-    }
-  ],
-  "dog.jpg": [
-    {
-      "prompt": "a large brown dog standing in the grass",
-      "category": "descriptive",
-      "score": 0.69775390625
-    },
-    {
-      "prompt": "a dog",
-      "category": "basic",
-      "score": 0.13525390625
-    },
-    {
-      "prompt": "a canine",
-      "category": "basic",
-      "score": 0.06805419921875
-    },
-    {
-      "prompt": "a loyal domestic animal",
-      "category": "contextual",
-      "score": 0.06695556640625
-    },
-    {
-      "prompt": "a meowing cat",
-      "category": "adversarial",
-      "score": 0.018310546875
-    },
-    {
-      "prompt": "a hamster in a cage",
-      "category": "adversarial",
-      "score": 0.00980377197265625
-    },
-    {
-      "prompt": "man's best friend",
-      "category": "contextual",
-      "score": 0.0028972625732421875
-    },
-    {
-      "prompt": "a golden retriever puppy playing",
-      "category": "descriptive",
-      "score": 0.0008301734924316406
-    }
-  ],
-  "guitar.jpg": [
-    {
-      "prompt": "a guitar",
-      "category": "basic",
-      "score": 0.71630859375
-    },
-    {
-      "prompt": "a wooden stringed instrument",
-      "category": "descriptive",
-      "score": 0.1187744140625
-    },
-    {
-      "prompt": "a musical instrument",
-      "category": "basic",
-      "score": 0.0869140625
-    },
-    {
-      "prompt": "an acoustic guitar leaning against a wall",
-      "category": "descriptive",
-      "score": 0.057891845703125
-    },
-    {
-      "prompt": "something used to play music",
-      "category": "contextual",
-      "score": 0.018798828125
-    },
-    {
-      "prompt": "an artist's tool for composition",
-      "category": "contextual",
-      "score": 0.0008387565612792969
-    },
-    {
-      "prompt": "a grand piano",
-      "category": "adversarial",
-      "score": 0.0003840923309326172
-    },
-    {
-      "prompt": "a set of drums",
-      "category": "adversarial",
-      "score": 3.355741500854492e-05
-    }
-  ],
-  "mountain.jpg": [
-    {
-      "prompt": "a mountain",
-      "category": "basic",
-      "score": 0.8994140625
-    },
-    {
-      "prompt": "high peaks",
-      "category": "basic",
-      "score": 0.06512451171875
-    },
-    {
-      "prompt": "a high altitude landscape",
-      "category": "contextual",
-      "score": 0.0267333984375
-    },
-    {
-      "prompt": "a flat desert plain",
-      "category": "adversarial",
-      "score": 0.0036182403564453125
-    },
-    {
-      "prompt": "snow-capped mountain peaks under a clear sky",
-      "category": "descriptive",
-      "score": 0.0032939910888671875
-    },
-    {
-      "prompt": "a rugged mountain range at sunset",
-      "category": "descriptive",
-      "score": 0.001331329345703125
-    },
-    {
-      "prompt": "a majestic natural wonder",
-      "category": "contextual",
-      "score": 0.0005550384521484375
-    },
-    {
-      "prompt": "a deep underwater cave",
-      "category": "adversarial",
-      "score": 3.3855438232421875e-05
-    }
-  ],
-  "pizza.jpg": [
-    {
-      "prompt": "a pizza",
-      "category": "basic",
-      "score": 0.8662109375
-    },
-    {
-      "prompt": "a hot pizza with melted cheese and pepperoni",
-      "category": "descriptive",
-      "score": 0.10675048828125
-    },
-    {
-      "prompt": "food",
-      "category": "basic",
-      "score": 0.019744873046875
-    },
-    {
-      "prompt": "a popular choice for dinner",
-      "category": "contextual",
-      "score": 0.00279998779296875
-    },
-    {
-      "prompt": "a delicious Italian dish on a wooden board",
-      "category": "descriptive",
-      "score": 0.002758026123046875
-    },
-    {
-      "prompt": "fast food usually served in a box",
-      "category": "contextual",
-      "score": 0.001453399658203125
-    },
-    {
-      "prompt": "a fresh green salad",
-      "category": "adversarial",
-      "score": 0.00015079975128173828
-    },
-    {
-      "prompt": "a chocolate cake",
-      "category": "adversarial",
-      "score": 2.2411346435546875e-05
-    }
-  ],
-  "tree.jpg": [
-    {
-      "prompt": "a tree",
-      "category": "basic",
-      "score": 0.79345703125
-    },
-    {
-      "prompt": "a tall green tree with many leaves",
-      "category": "descriptive",
-      "score": 0.11248779296875
-    },
-    {
-      "prompt": "an old oak tree in a field",
-      "category": "descriptive",
-      "score": 0.07977294921875
-    },
-    {
-      "prompt": "a plant",
-      "category": "basic",
-      "score": 0.008148193359375
-    },
-    {
-      "prompt": "nature's oxygen producer",
-      "category": "contextual",
-      "score": 0.005100250244140625
-    },
-    {
-      "prompt": "a vital part of the ecosystem",
-      "category": "contextual",
-      "score": 0.0008459091186523438
-    },
-    {
-      "prompt": "a plastic flower",
-      "category": "adversarial",
-      "score": 0.00014925003051757812
-    },
-    {
-      "prompt": "a steel skyscraper",
-      "category": "adversarial",
-      "score": 0.00014698505401611328
-    }
-  ]
+  "ViT-B/32": {
+    "beach.jpg": [
+      {
+        "prompt": "a beach",
+        "category": "basic",
+        "score": 0.6728515625
+      },
+      {
+        "prompt": "ocean and sand",
+        "category": "basic",
+        "score": 0.1927490234375
+      },
+      {
+        "prompt": "a sunny beach with blue water and white sand",
+        "category": "descriptive",
+        "score": 0.07550048828125
+      },
+      {
+        "prompt": "a coastal landscape at noon",
+        "category": "contextual",
+        "score": 0.0282135009765625
+      },
+      {
+        "prompt": "a relaxing vacation destination",
+        "category": "contextual",
+        "score": 0.0155792236328125
+      },
+      {
+        "prompt": "gentle waves crashing on a tropical shore",
+        "category": "descriptive",
+        "score": 0.01486968994140625
+      },
+      {
+        "prompt": "a snowy mountain",
+        "category": "adversarial",
+        "score": 0.00013697147369384766
+      },
+      {
+        "prompt": "a crowded city street",
+        "category": "adversarial",
+        "score": 9.47713851928711e-06
+      }
+    ],
+    "bird.jpg": [
+      {
+        "prompt": "a bird",
+        "category": "basic",
+        "score": 0.81982421875
+      },
+      {
+        "prompt": "a colorful bird perched on a branch",
+        "category": "descriptive",
+        "score": 0.158935546875
+      },
+      {
+        "prompt": "a small animal with feathers",
+        "category": "basic",
+        "score": 0.01081085205078125
+      },
+      {
+        "prompt": "a small sparrow in the forest",
+        "category": "descriptive",
+        "score": 0.00766754150390625
+      },
+      {
+        "prompt": "a creature capable of flight",
+        "category": "contextual",
+        "score": 0.002376556396484375
+      },
+      {
+        "prompt": "a swimming fish",
+        "category": "adversarial",
+        "score": 0.0002503395080566406
+      },
+      {
+        "prompt": "wildlife in its natural habitat",
+        "category": "contextual",
+        "score": 0.00019812583923339844
+      },
+      {
+        "prompt": "a roaring lion",
+        "category": "adversarial",
+        "score": 1.3709068298339844e-05
+      }
+    ],
+    "car.jpg": [
+      {
+        "prompt": "a car",
+        "category": "basic",
+        "score": 0.53125
+      },
+      {
+        "prompt": "a vehicle",
+        "category": "basic",
+        "score": 0.46142578125
+      },
+      {
+        "prompt": "a modern automobile parked on the street",
+        "category": "descriptive",
+        "score": 0.003749847412109375
+      },
+      {
+        "prompt": "a sleek red sports car",
+        "category": "descriptive",
+        "score": 0.00197601318359375
+      },
+      {
+        "prompt": "a mode of urban transportation",
+        "category": "contextual",
+        "score": 0.0011987686157226562
+      },
+      {
+        "prompt": "an engine-powered machine for travel",
+        "category": "contextual",
+        "score": 0.0003597736358642578
+      },
+      {
+        "prompt": "a flying airplane",
+        "category": "adversarial",
+        "score": 0.00031256675720214844
+      },
+      {
+        "prompt": "a wooden boat",
+        "category": "adversarial",
+        "score": 4.297494888305664e-05
+      }
+    ],
+    "cat.jpg": [
+      {
+        "prompt": "a cat",
+        "category": "basic",
+        "score": 0.75146484375
+      },
+      {
+        "prompt": "a small feline",
+        "category": "basic",
+        "score": 0.1842041015625
+      },
+      {
+        "prompt": "a predator from the Felidae family",
+        "category": "contextual",
+        "score": 0.034088134765625
+      },
+      {
+        "prompt": "a domestic cat with whiskers",
+        "category": "descriptive",
+        "score": 0.024169921875
+      },
+      {
+        "prompt": "a common household pet",
+        "category": "contextual",
+        "score": 0.00453948974609375
+      },
+      {
+        "prompt": "a barking dog",
+        "category": "adversarial",
+        "score": 0.0007071495056152344
+      },
+      {
+        "prompt": "a fluffy ginger cat sitting down",
+        "category": "descriptive",
+        "score": 0.0004222393035888672
+      },
+      {
+        "prompt": "a wild horse",
+        "category": "adversarial",
+        "score": 0.0001760721206665039
+      }
+    ],
+    "coffee.jpg": [
+      {
+        "prompt": "a cup of coffee",
+        "category": "basic",
+        "score": 0.66064453125
+      },
+      {
+        "prompt": "a hot drink",
+        "category": "basic",
+        "score": 0.140625
+      },
+      {
+        "prompt": "a steaming mug of black coffee on a table",
+        "category": "descriptive",
+        "score": 0.1280517578125
+      },
+      {
+        "prompt": "a morning caffeine boost",
+        "category": "contextual",
+        "score": 0.05419921875
+      },
+      {
+        "prompt": "a beverage served in a cafe",
+        "category": "contextual",
+        "score": 0.01067352294921875
+      },
+      {
+        "prompt": "latte art in a white ceramic cup",
+        "category": "descriptive",
+        "score": 0.0055389404296875
+      },
+      {
+        "prompt": "a bowl of hot soup",
+        "category": "adversarial",
+        "score": 0.0004203319549560547
+      },
+      {
+        "prompt": "a cold glass of water",
+        "category": "adversarial",
+        "score": 5.1021575927734375e-05
+      }
+    ],
+    "dog.jpg": [
+      {
+        "prompt": "a large brown dog standing in the grass",
+        "category": "descriptive",
+        "score": 0.69775390625
+      },
+      {
+        "prompt": "a dog",
+        "category": "basic",
+        "score": 0.13525390625
+      },
+      {
+        "prompt": "a canine",
+        "category": "basic",
+        "score": 0.06805419921875
+      },
+      {
+        "prompt": "a loyal domestic animal",
+        "category": "contextual",
+        "score": 0.06695556640625
+      },
+      {
+        "prompt": "a meowing cat",
+        "category": "adversarial",
+        "score": 0.018310546875
+      },
+      {
+        "prompt": "a hamster in a cage",
+        "category": "adversarial",
+        "score": 0.00980377197265625
+      },
+      {
+        "prompt": "man's best friend",
+        "category": "contextual",
+        "score": 0.0028972625732421875
+      },
+      {
+        "prompt": "a golden retriever puppy playing",
+        "category": "descriptive",
+        "score": 0.0008301734924316406
+      }
+    ],
+    "guitar.jpg": [
+      {
+        "prompt": "a guitar",
+        "category": "basic",
+        "score": 0.71630859375
+      },
+      {
+        "prompt": "a wooden stringed instrument",
+        "category": "descriptive",
+        "score": 0.1187744140625
+      },
+      {
+        "prompt": "a musical instrument",
+        "category": "basic",
+        "score": 0.0869140625
+      },
+      {
+        "prompt": "an acoustic guitar leaning against a wall",
+        "category": "descriptive",
+        "score": 0.057891845703125
+      },
+      {
+        "prompt": "something used to play music",
+        "category": "contextual",
+        "score": 0.018798828125
+      },
+      {
+        "prompt": "an artist's tool for composition",
+        "category": "contextual",
+        "score": 0.0008387565612792969
+      },
+      {
+        "prompt": "a grand piano",
+        "category": "adversarial",
+        "score": 0.0003840923309326172
+      },
+      {
+        "prompt": "a set of drums",
+        "category": "adversarial",
+        "score": 3.355741500854492e-05
+      }
+    ],
+    "mountain.jpg": [
+      {
+        "prompt": "a mountain",
+        "category": "basic",
+        "score": 0.8994140625
+      },
+      {
+        "prompt": "high peaks",
+        "category": "basic",
+        "score": 0.06512451171875
+      },
+      {
+        "prompt": "a high altitude landscape",
+        "category": "contextual",
+        "score": 0.0267333984375
+      },
+      {
+        "prompt": "a flat desert plain",
+        "category": "adversarial",
+        "score": 0.0036182403564453125
+      },
+      {
+        "prompt": "snow-capped mountain peaks under a clear sky",
+        "category": "descriptive",
+        "score": 0.0032939910888671875
+      },
+      {
+        "prompt": "a rugged mountain range at sunset",
+        "category": "descriptive",
+        "score": 0.001331329345703125
+      },
+      {
+        "prompt": "a majestic natural wonder",
+        "category": "contextual",
+        "score": 0.0005550384521484375
+      },
+      {
+        "prompt": "a deep underwater cave",
+        "category": "adversarial",
+        "score": 3.3855438232421875e-05
+      }
+    ],
+    "pizza.jpg": [
+      {
+        "prompt": "a pizza",
+        "category": "basic",
+        "score": 0.8662109375
+      },
+      {
+        "prompt": "a hot pizza with melted cheese and pepperoni",
+        "category": "descriptive",
+        "score": 0.10675048828125
+      },
+      {
+        "prompt": "food",
+        "category": "basic",
+        "score": 0.019744873046875
+      },
+      {
+        "prompt": "a popular choice for dinner",
+        "category": "contextual",
+        "score": 0.00279998779296875
+      },
+      {
+        "prompt": "a delicious Italian dish on a wooden board",
+        "category": "descriptive",
+        "score": 0.002758026123046875
+      },
+      {
+        "prompt": "fast food usually served in a box",
+        "category": "contextual",
+        "score": 0.001453399658203125
+      },
+      {
+        "prompt": "a fresh green salad",
+        "category": "adversarial",
+        "score": 0.00015079975128173828
+      },
+      {
+        "prompt": "a chocolate cake",
+        "category": "adversarial",
+        "score": 2.2411346435546875e-05
+      }
+    ],
+    "tree.jpg": [
+      {
+        "prompt": "a tree",
+        "category": "basic",
+        "score": 0.79345703125
+      },
+      {
+        "prompt": "a tall green tree with many leaves",
+        "category": "descriptive",
+        "score": 0.11248779296875
+      },
+      {
+        "prompt": "an old oak tree in a field",
+        "category": "descriptive",
+        "score": 0.07977294921875
+      },
+      {
+        "prompt": "a plant",
+        "category": "basic",
+        "score": 0.008148193359375
+      },
+      {
+        "prompt": "nature's oxygen producer",
+        "category": "contextual",
+        "score": 0.005100250244140625
+      },
+      {
+        "prompt": "a vital part of the ecosystem",
+        "category": "contextual",
+        "score": 0.0008459091186523438
+      },
+      {
+        "prompt": "a plastic flower",
+        "category": "adversarial",
+        "score": 0.00014925003051757812
+      },
+      {
+        "prompt": "a steel skyscraper",
+        "category": "adversarial",
+        "score": 0.00014698505401611328
+      }
+    ]
+  },
+  "ViT-B/16": {
+    "beach.jpg": [
+      {
+        "prompt": "a beach",
+        "category": "basic",
+        "score": 0.7421875
+      },
+      {
+        "prompt": "a sunny beach with blue water and white sand",
+        "category": "descriptive",
+        "score": 0.219482421875
+      },
+      {
+        "prompt": "a relaxing vacation destination",
+        "category": "contextual",
+        "score": 0.01218414306640625
+      },
+      {
+        "prompt": "a coastal landscape at noon",
+        "category": "contextual",
+        "score": 0.011810302734375
+      },
+      {
+        "prompt": "ocean and sand",
+        "category": "basic",
+        "score": 0.0110931396484375
+      },
+      {
+        "prompt": "gentle waves crashing on a tropical shore",
+        "category": "descriptive",
+        "score": 0.0031795501708984375
+      },
+      {
+        "prompt": "a snowy mountain",
+        "category": "adversarial",
+        "score": 7.3909759521484375e-06
+      },
+      {
+        "prompt": "a crowded city street",
+        "category": "adversarial",
+        "score": 2.086162567138672e-06
+      }
+    ],
+    "bird.jpg": [
+      {
+        "prompt": "a colorful bird perched on a branch",
+        "category": "descriptive",
+        "score": 0.927734375
+      },
+      {
+        "prompt": "a bird",
+        "category": "basic",
+        "score": 0.034881591796875
+      },
+      {
+        "prompt": "a small sparrow in the forest",
+        "category": "descriptive",
+        "score": 0.03125
+      },
+      {
+        "prompt": "a creature capable of flight",
+        "category": "contextual",
+        "score": 0.0021953582763671875
+      },
+      {
+        "prompt": "a small animal with feathers",
+        "category": "basic",
+        "score": 0.0021610260009765625
+      },
+      {
+        "prompt": "wildlife in its natural habitat",
+        "category": "contextual",
+        "score": 0.0012502670288085938
+      },
+      {
+        "prompt": "a swimming fish",
+        "category": "adversarial",
+        "score": 0.0004673004150390625
+      },
+      {
+        "prompt": "a roaring lion",
+        "category": "adversarial",
+        "score": 1.2516975402832031e-06
+      }
+    ],
+    "car.jpg": [
+      {
+        "prompt": "a car",
+        "category": "basic",
+        "score": 0.7021484375
+      },
+      {
+        "prompt": "a vehicle",
+        "category": "basic",
+        "score": 0.2352294921875
+      },
+      {
+        "prompt": "a sleek red sports car",
+        "category": "descriptive",
+        "score": 0.04217529296875
+      },
+      {
+        "prompt": "a modern automobile parked on the street",
+        "category": "descriptive",
+        "score": 0.00955963134765625
+      },
+      {
+        "prompt": "a mode of urban transportation",
+        "category": "contextual",
+        "score": 0.00756072998046875
+      },
+      {
+        "prompt": "an engine-powered machine for travel",
+        "category": "contextual",
+        "score": 0.0018243789672851562
+      },
+      {
+        "prompt": "a flying airplane",
+        "category": "adversarial",
+        "score": 0.0014886856079101562
+      },
+      {
+        "prompt": "a wooden boat",
+        "category": "adversarial",
+        "score": 1.1563301086425781e-05
+      }
+    ],
+    "cat.jpg": [
+      {
+        "prompt": "a cat",
+        "category": "basic",
+        "score": 0.650390625
+      },
+      {
+        "prompt": "a domestic cat with whiskers",
+        "category": "descriptive",
+        "score": 0.1619873046875
+      },
+      {
+        "prompt": "a small feline",
+        "category": "basic",
+        "score": 0.1363525390625
+      },
+      {
+        "prompt": "a predator from the Felidae family",
+        "category": "contextual",
+        "score": 0.033935546875
+      },
+      {
+        "prompt": "a common household pet",
+        "category": "contextual",
+        "score": 0.0160369873046875
+      },
+      {
+        "prompt": "a barking dog",
+        "category": "adversarial",
+        "score": 0.0008907318115234375
+      },
+      {
+        "prompt": "a fluffy ginger cat sitting down",
+        "category": "descriptive",
+        "score": 0.00022864341735839844
+      },
+      {
+        "prompt": "a wild horse",
+        "category": "adversarial",
+        "score": 9.530782699584961e-05
+      }
+    ],
+    "coffee.jpg": [
+      {
+        "prompt": "a cup of coffee",
+        "category": "basic",
+        "score": 0.435546875
+      },
+      {
+        "prompt": "a steaming mug of black coffee on a table",
+        "category": "descriptive",
+        "score": 0.344482421875
+      },
+      {
+        "prompt": "a hot drink",
+        "category": "basic",
+        "score": 0.1307373046875
+      },
+      {
+        "prompt": "a morning caffeine boost",
+        "category": "contextual",
+        "score": 0.07000732421875
+      },
+      {
+        "prompt": "a beverage served in a cafe",
+        "category": "contextual",
+        "score": 0.01335906982421875
+      },
+      {
+        "prompt": "latte art in a white ceramic cup",
+        "category": "descriptive",
+        "score": 0.004917144775390625
+      },
+      {
+        "prompt": "a bowl of hot soup",
+        "category": "adversarial",
+        "score": 0.0003910064697265625
+      },
+      {
+        "prompt": "a cold glass of water",
+        "category": "adversarial",
+        "score": 0.0003094673156738281
+      }
+    ],
+    "dog.jpg": [
+      {
+        "prompt": "a large brown dog standing in the grass",
+        "category": "descriptive",
+        "score": 0.94873046875
+      },
+      {
+        "prompt": "a dog",
+        "category": "basic",
+        "score": 0.028656005859375
+      },
+      {
+        "prompt": "a canine",
+        "category": "basic",
+        "score": 0.0206451416015625
+      },
+      {
+        "prompt": "a meowing cat",
+        "category": "adversarial",
+        "score": 0.0010118484497070312
+      },
+      {
+        "prompt": "a loyal domestic animal",
+        "category": "contextual",
+        "score": 0.0004150867462158203
+      },
+      {
+        "prompt": "man's best friend",
+        "category": "contextual",
+        "score": 0.00023651123046875
+      },
+      {
+        "prompt": "a hamster in a cage",
+        "category": "adversarial",
+        "score": 7.444620132446289e-05
+      },
+      {
+        "prompt": "a golden retriever puppy playing",
+        "category": "descriptive",
+        "score": 6.467103958129883e-05
+      }
+    ],
+    "guitar.jpg": [
+      {
+        "prompt": "a wooden stringed instrument",
+        "category": "descriptive",
+        "score": 0.494873046875
+      },
+      {
+        "prompt": "a guitar",
+        "category": "basic",
+        "score": 0.2337646484375
+      },
+      {
+        "prompt": "a musical instrument",
+        "category": "basic",
+        "score": 0.199951171875
+      },
+      {
+        "prompt": "an acoustic guitar leaning against a wall",
+        "category": "descriptive",
+        "score": 0.038177490234375
+      },
+      {
+        "prompt": "something used to play music",
+        "category": "contextual",
+        "score": 0.0194854736328125
+      },
+      {
+        "prompt": "an artist's tool for composition",
+        "category": "contextual",
+        "score": 0.0114593505859375
+      },
+      {
+        "prompt": "a grand piano",
+        "category": "adversarial",
+        "score": 0.00199127197265625
+      },
+      {
+        "prompt": "a set of drums",
+        "category": "adversarial",
+        "score": 0.0002033710479736328
+      }
+    ],
+    "mountain.jpg": [
+      {
+        "prompt": "a mountain",
+        "category": "basic",
+        "score": 0.7294921875
+      },
+      {
+        "prompt": "high peaks",
+        "category": "basic",
+        "score": 0.1602783203125
+      },
+      {
+        "prompt": "a rugged mountain range at sunset",
+        "category": "descriptive",
+        "score": 0.05987548828125
+      },
+      {
+        "prompt": "a high altitude landscape",
+        "category": "contextual",
+        "score": 0.032562255859375
+      },
+      {
+        "prompt": "snow-capped mountain peaks under a clear sky",
+        "category": "descriptive",
+        "score": 0.01378631591796875
+      },
+      {
+        "prompt": "a flat desert plain",
+        "category": "adversarial",
+        "score": 0.003124237060546875
+      },
+      {
+        "prompt": "a majestic natural wonder",
+        "category": "contextual",
+        "score": 0.0007424354553222656
+      },
+      {
+        "prompt": "a deep underwater cave",
+        "category": "adversarial",
+        "score": 9.357929229736328e-06
+      }
+    ],
+    "pizza.jpg": [
+      {
+        "prompt": "a pizza",
+        "category": "basic",
+        "score": 0.857421875
+      },
+      {
+        "prompt": "a hot pizza with melted cheese and pepperoni",
+        "category": "descriptive",
+        "score": 0.12744140625
+      },
+      {
+        "prompt": "food",
+        "category": "basic",
+        "score": 0.007190704345703125
+      },
+      {
+        "prompt": "a delicious Italian dish on a wooden board",
+        "category": "descriptive",
+        "score": 0.006549835205078125
+      },
+      {
+        "prompt": "a popular choice for dinner",
+        "category": "contextual",
+        "score": 0.00064849853515625
+      },
+      {
+        "prompt": "fast food usually served in a box",
+        "category": "contextual",
+        "score": 0.0004968643188476562
+      },
+      {
+        "prompt": "a fresh green salad",
+        "category": "adversarial",
+        "score": 1.150369644165039e-05
+      },
+      {
+        "prompt": "a chocolate cake",
+        "category": "adversarial",
+        "score": 8.165836334228516e-06
+      }
+    ],
+    "tree.jpg": [
+      {
+        "prompt": "a tree",
+        "category": "basic",
+        "score": 0.73193359375
+      },
+      {
+        "prompt": "a tall green tree with many leaves",
+        "category": "descriptive",
+        "score": 0.16845703125
+      },
+      {
+        "prompt": "an old oak tree in a field",
+        "category": "descriptive",
+        "score": 0.08087158203125
+      },
+      {
+        "prompt": "a plant",
+        "category": "basic",
+        "score": 0.01239776611328125
+      },
+      {
+        "prompt": "a vital part of the ecosystem",
+        "category": "contextual",
+        "score": 0.00408935546875
+      },
+      {
+        "prompt": "nature's oxygen producer",
+        "category": "contextual",
+        "score": 0.002155303955078125
+      },
+      {
+        "prompt": "a plastic flower",
+        "category": "adversarial",
+        "score": 1.1324882507324219e-05
+      },
+      {
+        "prompt": "a steel skyscraper",
+        "category": "adversarial",
+        "score": 9.834766387939453e-06
+      }
+    ]
+  },
+  "ViT-L/14": {
+    "beach.jpg": [
+      {
+        "prompt": "a beach",
+        "category": "basic",
+        "score": 0.66552734375
+      },
+      {
+        "prompt": "a sunny beach with blue water and white sand",
+        "category": "descriptive",
+        "score": 0.252685546875
+      },
+      {
+        "prompt": "ocean and sand",
+        "category": "basic",
+        "score": 0.041900634765625
+      },
+      {
+        "prompt": "a relaxing vacation destination",
+        "category": "contextual",
+        "score": 0.0207366943359375
+      },
+      {
+        "prompt": "gentle waves crashing on a tropical shore",
+        "category": "descriptive",
+        "score": 0.01338958740234375
+      },
+      {
+        "prompt": "a coastal landscape at noon",
+        "category": "contextual",
+        "score": 0.00566864013671875
+      },
+      {
+        "prompt": "a snowy mountain",
+        "category": "adversarial",
+        "score": 6.914138793945312e-05
+      },
+      {
+        "prompt": "a crowded city street",
+        "category": "adversarial",
+        "score": 7.748603820800781e-07
+      }
+    ],
+    "bird.jpg": [
+      {
+        "prompt": "a bird",
+        "category": "basic",
+        "score": 0.8681640625
+      },
+      {
+        "prompt": "a small sparrow in the forest",
+        "category": "descriptive",
+        "score": 0.08074951171875
+      },
+      {
+        "prompt": "a small animal with feathers",
+        "category": "basic",
+        "score": 0.02313232421875
+      },
+      {
+        "prompt": "a colorful bird perched on a branch",
+        "category": "descriptive",
+        "score": 0.021392822265625
+      },
+      {
+        "prompt": "wildlife in its natural habitat",
+        "category": "contextual",
+        "score": 0.0038356781005859375
+      },
+      {
+        "prompt": "a creature capable of flight",
+        "category": "contextual",
+        "score": 0.0021190643310546875
+      },
+      {
+        "prompt": "a swimming fish",
+        "category": "adversarial",
+        "score": 0.0007433891296386719
+      },
+      {
+        "prompt": "a roaring lion",
+        "category": "adversarial",
+        "score": 8.463859558105469e-06
+      }
+    ],
+    "car.jpg": [
+      {
+        "prompt": "a car",
+        "category": "basic",
+        "score": 0.475830078125
+      },
+      {
+        "prompt": "a vehicle",
+        "category": "basic",
+        "score": 0.447021484375
+      },
+      {
+        "prompt": "a sleek red sports car",
+        "category": "descriptive",
+        "score": 0.0361328125
+      },
+      {
+        "prompt": "an engine-powered machine for travel",
+        "category": "contextual",
+        "score": 0.0256195068359375
+      },
+      {
+        "prompt": "a modern automobile parked on the street",
+        "category": "descriptive",
+        "score": 0.007694244384765625
+      },
+      {
+        "prompt": "a mode of urban transportation",
+        "category": "contextual",
+        "score": 0.0073394775390625
+      },
+      {
+        "prompt": "a flying airplane",
+        "category": "adversarial",
+        "score": 0.00017130374908447266
+      },
+      {
+        "prompt": "a wooden boat",
+        "category": "adversarial",
+        "score": 3.337860107421875e-06
+      }
+    ],
+    "cat.jpg": [
+      {
+        "prompt": "a cat",
+        "category": "basic",
+        "score": 0.61865234375
+      },
+      {
+        "prompt": "a small feline",
+        "category": "basic",
+        "score": 0.11993408203125
+      },
+      {
+        "prompt": "a domestic cat with whiskers",
+        "category": "descriptive",
+        "score": 0.1180419921875
+      },
+      {
+        "prompt": "a predator from the Felidae family",
+        "category": "contextual",
+        "score": 0.10748291015625
+      },
+      {
+        "prompt": "a common household pet",
+        "category": "contextual",
+        "score": 0.0338134765625
+      },
+      {
+        "prompt": "a barking dog",
+        "category": "adversarial",
+        "score": 0.0017642974853515625
+      },
+      {
+        "prompt": "a fluffy ginger cat sitting down",
+        "category": "descriptive",
+        "score": 0.000370025634765625
+      },
+      {
+        "prompt": "a wild horse",
+        "category": "adversarial",
+        "score": 3.719329833984375e-05
+      }
+    ],
+    "coffee.jpg": [
+      {
+        "prompt": "a cup of coffee",
+        "category": "basic",
+        "score": 0.78369140625
+      },
+      {
+        "prompt": "a steaming mug of black coffee on a table",
+        "category": "descriptive",
+        "score": 0.0706787109375
+      },
+      {
+        "prompt": "a hot drink",
+        "category": "basic",
+        "score": 0.0643310546875
+      },
+      {
+        "prompt": "a morning caffeine boost",
+        "category": "contextual",
+        "score": 0.060455322265625
+      },
+      {
+        "prompt": "a beverage served in a cafe",
+        "category": "contextual",
+        "score": 0.016021728515625
+      },
+      {
+        "prompt": "latte art in a white ceramic cup",
+        "category": "descriptive",
+        "score": 0.004589080810546875
+      },
+      {
+        "prompt": "a bowl of hot soup",
+        "category": "adversarial",
+        "score": 5.424022674560547e-05
+      },
+      {
+        "prompt": "a cold glass of water",
+        "category": "adversarial",
+        "score": 4.13060188293457e-05
+      }
+    ],
+    "dog.jpg": [
+      {
+        "prompt": "a large brown dog standing in the grass",
+        "category": "descriptive",
+        "score": 0.72119140625
+      },
+      {
+        "prompt": "a dog",
+        "category": "basic",
+        "score": 0.0931396484375
+      },
+      {
+        "prompt": "a canine",
+        "category": "basic",
+        "score": 0.07720947265625
+      },
+      {
+        "prompt": "a loyal domestic animal",
+        "category": "contextual",
+        "score": 0.05474853515625
+      },
+      {
+        "prompt": "a hamster in a cage",
+        "category": "adversarial",
+        "score": 0.044708251953125
+      },
+      {
+        "prompt": "man's best friend",
+        "category": "contextual",
+        "score": 0.00482177734375
+      },
+      {
+        "prompt": "a meowing cat",
+        "category": "adversarial",
+        "score": 0.00390625
+      },
+      {
+        "prompt": "a golden retriever puppy playing",
+        "category": "descriptive",
+        "score": 0.00011432170867919922
+      }
+    ],
+    "guitar.jpg": [
+      {
+        "prompt": "a guitar",
+        "category": "basic",
+        "score": 0.73291015625
+      },
+      {
+        "prompt": "a wooden stringed instrument",
+        "category": "descriptive",
+        "score": 0.1767578125
+      },
+      {
+        "prompt": "a musical instrument",
+        "category": "basic",
+        "score": 0.055633544921875
+      },
+      {
+        "prompt": "an acoustic guitar leaning against a wall",
+        "category": "descriptive",
+        "score": 0.0307159423828125
+      },
+      {
+        "prompt": "something used to play music",
+        "category": "contextual",
+        "score": 0.0037860870361328125
+      },
+      {
+        "prompt": "an artist's tool for composition",
+        "category": "contextual",
+        "score": 0.0002658367156982422
+      },
+      {
+        "prompt": "a grand piano",
+        "category": "adversarial",
+        "score": 9.328126907348633e-05
+      },
+      {
+        "prompt": "a set of drums",
+        "category": "adversarial",
+        "score": 2.384185791015625e-06
+      }
+    ],
+    "mountain.jpg": [
+      {
+        "prompt": "a mountain",
+        "category": "basic",
+        "score": 0.87109375
+      },
+      {
+        "prompt": "high peaks",
+        "category": "basic",
+        "score": 0.11248779296875
+      },
+      {
+        "prompt": "a high altitude landscape",
+        "category": "contextual",
+        "score": 0.00665283203125
+      },
+      {
+        "prompt": "a rugged mountain range at sunset",
+        "category": "descriptive",
+        "score": 0.005779266357421875
+      },
+      {
+        "prompt": "snow-capped mountain peaks under a clear sky",
+        "category": "descriptive",
+        "score": 0.00252532958984375
+      },
+      {
+        "prompt": "a majestic natural wonder",
+        "category": "contextual",
+        "score": 0.0008859634399414062
+      },
+      {
+        "prompt": "a flat desert plain",
+        "category": "adversarial",
+        "score": 0.0005130767822265625
+      },
+      {
+        "prompt": "a deep underwater cave",
+        "category": "adversarial",
+        "score": 1.9669532775878906e-06
+      }
+    ],
+    "pizza.jpg": [
+      {
+        "prompt": "a pizza",
+        "category": "basic",
+        "score": 0.95263671875
+      },
+      {
+        "prompt": "a hot pizza with melted cheese and pepperoni",
+        "category": "descriptive",
+        "score": 0.020721435546875
+      },
+      {
+        "prompt": "food",
+        "category": "basic",
+        "score": 0.0204010009765625
+      },
+      {
+        "prompt": "a delicious Italian dish on a wooden board",
+        "category": "descriptive",
+        "score": 0.0044097900390625
+      },
+      {
+        "prompt": "a popular choice for dinner",
+        "category": "contextual",
+        "score": 0.0018968582153320312
+      },
+      {
+        "prompt": "fast food usually served in a box",
+        "category": "contextual",
+        "score": 9.298324584960938e-05
+      },
+      {
+        "prompt": "a fresh green salad",
+        "category": "adversarial",
+        "score": 3.5762786865234375e-06
+      },
+      {
+        "prompt": "a chocolate cake",
+        "category": "adversarial",
+        "score": 1.9669532775878906e-06
+      }
+    ],
+    "tree.jpg": [
+      {
+        "prompt": "a tree",
+        "category": "basic",
+        "score": 0.884765625
+      },
+      {
+        "prompt": "a tall green tree with many leaves",
+        "category": "descriptive",
+        "score": 0.08624267578125
+      },
+      {
+        "prompt": "a plant",
+        "category": "basic",
+        "score": 0.0195465087890625
+      },
+      {
+        "prompt": "an old oak tree in a field",
+        "category": "descriptive",
+        "score": 0.00867462158203125
+      },
+      {
+        "prompt": "a vital part of the ecosystem",
+        "category": "contextual",
+        "score": 0.0003523826599121094
+      },
+      {
+        "prompt": "nature's oxygen producer",
+        "category": "contextual",
+        "score": 0.0002617835998535156
+      },
+      {
+        "prompt": "a steel skyscraper",
+        "category": "adversarial",
+        "score": 0.0002071857452392578
+      },
+      {
+        "prompt": "a plastic flower",
+        "category": "adversarial",
+        "score": 0.00011438131332397461
+      }
+    ]
+  }
 }
