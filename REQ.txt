@@ -1,0 +1,7 @@
+Compare between three different models of vision transformers
+Define model architecture
+All equations
+Drawbacks
+Advantages
+Your vision for enhancement
+Write a Scientific paper  for this topic and a valuable presentation
