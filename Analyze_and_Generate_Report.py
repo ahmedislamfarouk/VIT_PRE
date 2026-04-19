@@ -65,9 +65,9 @@ def analyze():
     md_content.append("- **Sensitivity to Detail:** As model size increases from ViT-B to ViT-L, the gap between 'Basic' and 'Descriptive' prompts often widens, indicating that larger models are better at utilizing semantic density.")
     md_content.append("- **Robustness:** All three models (B/32, B/16, L/14) show high robustness against adversarial prompts in this dataset, consistently ranking them at the bottom.")
 
-    with open("ANALYSIS.md", "w") as f:
+    with open("Final_Comparison_Report.md", "w") as f:
         f.write("\n".join(md_content))
-    print("Comparative analysis complete. Updated ANALYSIS.md")
+    print("Comparative analysis complete. Updated Final_Comparison_Report.md")
 
 if __name__ == "__main__":
     analyze()
