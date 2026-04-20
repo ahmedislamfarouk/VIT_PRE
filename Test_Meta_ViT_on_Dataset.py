@@ -1,3 +1,4 @@
+import argparse
 import torch
 import torch.nn as nn
 import torchvision
@@ -30,7 +31,40 @@ class SimplePatchEmbedding(nn.Module):
         return x
 
 def test_models_on_dataset():
-    print("Downloading and preparing CIFAR-10 Dataset (Standard Vision Benchmark)...")
+    parser = argparse.ArgumentParser(
+        description="Test Meta ViT enhancement modules on CIFAR-10 sample batches."
+    )
+    parser.add_argument(
+        "--data-root",
+        type=str,
+        default="./data_cifar",
+        help="Directory used for CIFAR-10 dataset cache",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=4,
+        help="Batch size for loading CIFAR-10",
+    )
+    parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=0,
+        help="Number of dataloader worker processes",
+    )
+    parser.add_argument(
+        "--download",
+        action="store_true",
+        help="Download CIFAR-10 if it is not already cached",
+    )
+    parser.add_argument(
+        "--quick-check",
+        action="store_true",
+        help="Run tensor-shape checks only without dataset loading",
+    )
+    args = parser.parse_args()
+
+    print("Preparing CIFAR-10 Dataset (Standard Vision Benchmark)...")
     
     # 2. Prepare Dataset
     transform = transforms.Compose([
@@ -38,14 +72,29 @@ def test_models_on_dataset():
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    trainset = torchvision.datasets.CIFAR10(root='./data_cifar', train=True,
-                                            download=True, transform=transform)
-    trainloader = DataLoader(trainset, batch_size=4, shuffle=True)
-    
-    # Get a single batch of real images
-    dataiter = iter(trainloader)
-    images, labels = next(dataiter)
-    B = images.size(0)
+    if args.quick_check:
+        images = torch.randn(args.batch_size, 3, 32, 32)
+        labels = torch.zeros(args.batch_size, dtype=torch.long)
+        B = images.size(0)
+        print("Quick check mode enabled: using synthetic tensors instead of dataset download.")
+    else:
+        trainset = torchvision.datasets.CIFAR10(
+            root=args.data_root,
+            train=True,
+            download=args.download,
+            transform=transform,
+        )
+        trainloader = DataLoader(
+            trainset,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.num_workers,
+        )
+
+        # Get a single batch of real images
+        dataiter = iter(trainloader)
+        images, labels = next(dataiter)
+        B = images.size(0)
     
     print(f"\nLoaded Batch: {images.shape} (Batch Size, Channels, Height, Width)")
     print(f"Labels: {labels}\n")
