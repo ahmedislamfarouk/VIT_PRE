@@ -1,0 +1,20 @@
+{
+  "input": "VIT_PRE\\results_real_clip_test.json",
+  "categories": [
+    "adversarial",
+    "basic",
+    "contextual",
+    "descriptive"
+  ],
+  "model_category_average": {
+    "ViT-B/32": {
+      "adversarial": 0.0017566667842856987,
+      "basic": 0.40417940453626217,
+      "contextual": 0.013921535347617465,
+      "descriptive": 0.08014241047494579
+    }
+  },
+  "top1_non_adversarial_rate_percent": {
+    "ViT-B/32": 100.0
+  }
+}
