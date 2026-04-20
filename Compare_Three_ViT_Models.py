@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -64,16 +63,18 @@ def run_inference(prompts_file: Path, data_dir: Path, output_file: Path, models)
 
                 # Similarity
                 similarity = (100.0 * image_features @ text_features.T).softmax(dim=-1)
-                values, indices = similarity[0].topk(len(all_prompts))
+                top_values, top_indices = similarity[0].topk(len(all_prompts))
+                values = top_values.tolist()
+                indices = top_indices.tolist()
 
             img_results = []
             for value, index in zip(values, indices):
-                idx = index.item()
+                idx = int(index)
                 img_results.append(
                     {
                         "prompt": prompt_map[idx]["text"],
                         "category": prompt_map[idx]["category"],
-                        "score": float(value.item()),
+                        "score": float(value),
                     }
                 )
 
