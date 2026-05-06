@@ -1,3 +1,16 @@
+"""
+Teacher logit pre-computation and caching.
+
+Knowledge distillation requires the teacher's logits for every training
+sample. Computing them on-the-fly each epoch is wasteful since the teachers
+are frozen. This module computes them once, caches to disk, and provides
+a fast load path for subsequent runs.
+
+The cached file (teacher_logits.pkl) contains all three teachers' logits
+plus the ground-truth labels, making TPE hyperparameter search and
+final training much faster.
+"""
+
 import os
 import pickle
 
@@ -6,11 +19,27 @@ from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
 from tqdm import tqdm
 
-from ..config import BACKBONE_REGISTRY, CACHE_DIR, DEVICE, IMG_SIZE, IMAGENET_STATS
-from ..models.teacher import TeacherModel
+from mstd.config import BACKBONE_REGISTRY, CACHE_DIR, DEVICE, IMG_SIZE, IMAGENET_STATS
+from mstd.models.teacher import TeacherModel
 
 
 def precompute_teacher_logits(dataset_path: str, batch_size: int = 64, force: bool = False):
+    """
+    Pre-compute and cache teacher logits for the full training set.
+
+    Each teacher (DeiT, DINOv2, SigLIP2) runs a single forward pass over
+    the training data. The logits are concatenated and saved to a pickle
+    file in CACHE_DIR.
+
+    Args:
+        dataset_path: Path to the Intel dataset root.
+        batch_size: Batch size for teacher forward passes.
+        force: If True, re-compute even if cache exists.
+
+    Returns:
+        Tuple of (deit_logits, dinov2_logits, siglip2_logits, labels).
+        Each logits tensor is shape (N, NUM_CLASSES).
+    """
     cache_file = CACHE_DIR / "teacher_logits.pkl"
     if cache_file.exists() and not force:
         with open(cache_file, "rb") as f:

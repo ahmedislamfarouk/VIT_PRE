@@ -1,9 +1,26 @@
+"""
+Evaluation metrics and comparison utilities.
+
+Provides:
+  - evaluate_model: Quick evaluation returning a metrics dict.
+  - print_comparison_table: Formatted table for comparing multiple models.
+"""
+
 import torch
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 
 @torch.no_grad()
 def evaluate_model(model, loader, device):
+    """
+    Evaluate a model on a validation DataLoader.
+
+    Expects the loader to yield (images, labels, _) tuples (the third
+    element, teacher logits, is ignored).
+
+    Returns:
+        Dict with keys: accuracy, f1_macro, precision_macro, recall_macro.
+    """
     model.eval()
     all_preds, all_labels = [], []
     for images, labels, _ in loader:
@@ -18,6 +35,13 @@ def evaluate_model(model, loader, device):
 
 
 def print_comparison_table(all_results: list):
+    """
+    Print a formatted table comparing multiple models across metrics.
+
+    Args:
+        all_results: List of dicts, each with keys:
+                     model, accuracy, precision_macro, recall_macro, f1_macro.
+    """
     print(f"\n{'='*70}")
     print(f"  BACKBONE COMPARISON SUMMARY")
     print(f"{'='*70}")

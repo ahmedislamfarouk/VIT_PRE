@@ -1,16 +1,36 @@
+"""
+Tree-structured Parzen Estimator (TPE) hyperparameter optimization for AMTD.
+
+Uses Optuna to search over the distillation hyperparameter space:
+  - Learning rate, weight decay, dropout
+  - Distillation temperature and alpha
+  - Label smoothing
+  - Batch size and LR scheduler type
+
+Each trial trains a StudentModel for a small number of epochs and
+reports the best validation accuracy. The study uses MedianPruner
+to stop unpromising trials early.
+"""
+
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
 import optuna
 
-from ..config import IMG_SIZE, IMAGENET_STATS, NUM_CLASSES, DEVICE
-from ..data.dataset import DistillDataset
-from ..models.student import StudentModel
-from .distillation import train_epoch_distill, evaluate_distill
+from mstd.config import IMG_SIZE, IMAGENET_STATS, NUM_CLASSES, DEVICE
+from mstd.data.dataset import DistillDataset
+from mstd.models.student import StudentModel
+from mstd.training.distillation import train_epoch_distill, evaluate_distill
 
 
 def create_tpe_loaders(dataset_path, teacher_logits, batch_size, use_augment):
+    """
+    DataLoaders for TPE trials.
+
+    Same structure as create_distill_loaders but accepts dataset_path
+    directly and is defined here to keep the TPE module self-contained.
+    """
     if use_augment:
         train_transform = transforms.Compose([
             transforms.Resize((IMG_SIZE, IMG_SIZE)),
@@ -53,6 +73,21 @@ def create_tpe_loaders(dataset_path, teacher_logits, batch_size, use_augment):
 
 
 def build_objective(dataset_path, teacher_logits, epochs_per_trial=8):
+    """
+    Build the Optuna objective function for TPE hyperparameter search.
+
+    The returned function samples hyperparameters, trains briefly, and
+    returns the best validation accuracy achieved. The study uses this
+    to guide the search toward better hyperparameter regions.
+
+    Args:
+        dataset_path: Path to Intel dataset.
+        teacher_logits: Pre-computed ensemble teacher logits.
+        epochs_per_trial: Number of epochs for each trial (short = fast search).
+
+    Returns:
+        Callable objective(dict) suitable for study.optimize().
+    """
     def objective(trial):
         lr = trial.suggest_float("lr", 1e-5, 5e-3, log=True)
         weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True)

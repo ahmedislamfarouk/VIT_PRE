@@ -1,11 +1,33 @@
+"""
+Static visualization plotting utilities.
+
+Generates and saves publication-quality plots to RESULTS_DIR:
+  - Training curves (loss + accuracy over epochs)
+  - Confusion matrices (one per model)
+  - Metric comparison bar charts (accuracy, precision, recall, F1)
+  - Per-class F1 bar charts
+  - Radar chart comparing all models across metrics
+  - AMTD-specific training curves
+  - Data-hunger curves (accuracy vs. training set size)
+  - Simple validation accuracy curve for the enhanced training script
+
+All plots use consistent colors and markers defined in mstd.config.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patheffects
 
-from ..config import MODEL_COLORS, MODEL_MARKERS, MODEL_LABELS, MODEL_CMAPS, CLASS_NAMES, NUM_CLASSES, RESULTS_DIR
+from mstd.config import MODEL_COLORS, MODEL_MARKERS, MODEL_LABELS, MODEL_CMAPS, CLASS_NAMES, NUM_CLASSES, RESULTS_DIR
 
 
 def _style_ax(ax, title: str, xlabel: str, ylabel: str):
+    """
+    Apply consistent styling to a matplotlib Axes object.
+
+    Removes top/right spines, adds light grid, sets font sizes.
+    Used by all plot functions for visual consistency.
+    """
     ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
     ax.set_xlabel(xlabel, fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
@@ -15,6 +37,11 @@ def _style_ax(ax, title: str, xlabel: str, ylabel: str):
 
 
 def plot_training_curves(all_histories: dict, epochs: int = 10):
+    """
+    Two-panel figure: (left) train/val loss curves, (right) val accuracy.
+
+    Each model gets its own color and marker from the global config.
+    """
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     epoch_range = range(1, epochs + 1)
 
@@ -44,10 +71,15 @@ def plot_training_curves(all_histories: dict, epochs: int = 10):
     out = RESULTS_DIR / "01_training_curves.png"
     plt.savefig(out, dpi=150, bbox_inches="tight")
     plt.close()
-    print(f"Saved → {out}")
+    print(f"Saved -> {out}")
 
 
 def plot_confusion_matrices(all_results: list):
+    """
+    One confusion matrix per model, arranged side-by-side.
+
+    Each cell shows the raw count. Color intensity indicates magnitude.
+    """
     n = len(all_results)
     fig, axes = plt.subplots(1, n, figsize=(6 * n, 5))
     if n == 1:
@@ -83,10 +115,13 @@ def plot_confusion_matrices(all_results: list):
     out = RESULTS_DIR / "02_confusion_matrices.png"
     plt.savefig(out, dpi=150, bbox_inches="tight")
     plt.close()
-    print(f"Saved → {out}")
+    print(f"Saved -> {out}")
 
 
 def plot_metric_comparison(all_results: list):
+    """
+    Grouped bar chart comparing all models across four metrics.
+    """
     metrics = ["accuracy", "precision_macro", "recall_macro", "f1_macro"]
     metric_names = ["Accuracy", "Precision (macro)", "Recall (macro)", "F1 (macro)"]
 
@@ -118,10 +153,13 @@ def plot_metric_comparison(all_results: list):
     out = RESULTS_DIR / "03_metric_comparison.png"
     plt.savefig(out, dpi=150, bbox_inches="tight")
     plt.close()
-    print(f"Saved → {out}")
+    print(f"Saved -> {out}")
 
 
 def plot_per_class_f1(all_results: list):
+    """
+    Grouped bar chart showing per-class F1 scores for each model.
+    """
     n_classes = NUM_CLASSES
     n_models = len(all_results)
     x = np.arange(n_classes)
@@ -150,10 +188,16 @@ def plot_per_class_f1(all_results: list):
     out = RESULTS_DIR / "04_per_class_f1.png"
     plt.savefig(out, dpi=150, bbox_inches="tight")
     plt.close()
-    print(f"Saved → {out}")
+    print(f"Saved -> {out}")
 
 
 def plot_radar(all_results: list):
+    """
+    Polar (radar) chart comparing models across 4 metrics.
+
+    Each model appears as a filled polygon. Useful for spotting
+    strengths/weaknesses at a glance.
+    """
     categories = ["Accuracy", "Precision", "Recall", "F1-Score"]
     N = len(categories)
     angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
@@ -190,10 +234,16 @@ def plot_radar(all_results: list):
     out = RESULTS_DIR / "05_radar_chart.png"
     plt.savefig(out, dpi=150, bbox_inches="tight")
     plt.close()
-    print(f"Saved → {out}")
+    print(f"Saved -> {out}")
 
 
 def plot_amtd_curves(history: dict, out_path, baseline=94.93):
+    """
+    Two-panel training curves specific to the AMTD experiment.
+
+    Left: train/val loss. Right: validation accuracy with a horizontal
+    line at the DINOv2 baseline for comparison.
+    """
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
     epochs = range(1, len(history["train_loss"]) + 1)
     axes[0].plot(epochs, history["train_loss"], label="Train Loss", marker="o")
@@ -216,10 +266,16 @@ def plot_amtd_curves(history: dict, out_path, baseline=94.93):
     plt.tight_layout()
     plt.savefig(out_path, dpi=150)
     plt.close()
-    print(f"[Plot] Saved training curves → {out_path}")
+    print(f"[Plot] Saved training curves -> {out_path}")
 
 
 def plot_data_hunger_curves(results: dict, subset_ratios, out_path):
+    """
+    Line chart: accuracy vs. percentage of training data used.
+
+    Each model is a separate line. A flatter curve means the model
+    is less data-hungry (the key claim of AMTD).
+    """
     colors = {"deit": "#378ADD", "dinov2": "#1D9E75", "siglip2": "#D85A30", "amtd": "#8E44AD"}
     labels_map = {"deit": "DeiT-Tiny", "dinov2": "DINOv2-S/14", "siglip2": "SigLIP2-B/16", "amtd": "AMTD (Ours)"}
     markers = {"deit": "o", "dinov2": "s", "siglip2": "^", "amtd": "D"}
@@ -240,10 +296,14 @@ def plot_data_hunger_curves(results: dict, subset_ratios, out_path):
     plt.tight_layout()
     plt.savefig(out_path, dpi=150)
     plt.close()
-    print(f"[Plot] Saved → {out_path}")
+    print(f"[Plot] Saved -> {out_path}")
 
 
 def plot_amtd_val_curve(history, out_path):
+    """
+    Simple single-axis validation accuracy curve for the
+    complete_enhanced_training.py script. Includes DINOv2 baseline line.
+    """
     fig, ax = plt.subplots(figsize=(8, 5))
     epochs = range(1, len(history["val_acc"]) + 1)
     ax.plot(epochs, [a * 100 for a in history["val_acc"]], marker="o", label="Val Acc", color="green")

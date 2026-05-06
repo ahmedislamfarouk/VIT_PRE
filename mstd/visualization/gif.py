@@ -1,13 +1,28 @@
+"""
+Animated visualization utilities (GIF generation).
+
+Provides:
+  - plot_training_gif: Frame-by-frame animation of validation accuracy
+    building up over epochs, saved as a GIF.
+  - create_radar_animation: Sequential radar chart animation where each
+    model's polygon "grows in" one after another with easing.
+"""
+
 import io
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
-from ..config import MODEL_COLORS, MODEL_MARKERS, MODEL_LABELS, RESULTS_DIR
+from mstd.config import MODEL_COLORS, MODEL_MARKERS, MODEL_LABELS, RESULTS_DIR
 
 
 def _style_ax(ax, title: str, xlabel: str, ylabel: str):
+    """
+    Apply consistent styling to a matplotlib Axes.
+
+    Removes top/right spines, adds grid, sets font sizes.
+    """
     ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
     ax.set_xlabel(xlabel, fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
@@ -17,6 +32,16 @@ def _style_ax(ax, title: str, xlabel: str, ylabel: str):
 
 
 def plot_training_gif(all_histories: dict, epochs: int = 10):
+    """
+    Create an animated GIF showing validation accuracy evolving epoch by epoch.
+
+    Each frame adds a new epoch's data point for all models. The last frame
+    is held longer for emphasis. Requires Pillow.
+
+    Args:
+        all_histories: Dict mapping model_name -> history dict with 'val_acc' list.
+        epochs: Total number of epochs in the histories.
+    """
     try:
         from PIL import Image as PILImage
     except ImportError:
@@ -69,10 +94,24 @@ def plot_training_gif(all_histories: dict, epochs: int = 10):
         out, save_all=True, append_images=frames[1:],
         duration=300, loop=0,
     )
-    print(f"Saved → {out}")
+    print(f"Saved -> {out}")
 
 
 def create_radar_animation(output_path, deit_data, dinov2_data, siglip2_data, labels=None):
+    """
+    Sequential radar chart animation.
+
+    Models appear one-by-one with a smooth ease-out-cubic animation:
+      DeiT starts at frame 0, DINOv2 at frame 40, SigLIP2 at frame 80.
+    Each model's polygon grows from the center (0.85) to its target values.
+
+    Args:
+        output_path: Where to save the GIF.
+        deit_data: List of 4 metric values for DeiT.
+        dinov2_data: List of 4 metric values for DINOv2.
+        siglip2_data: List of 4 metric values for SigLIP2.
+        labels: Category labels (default: Accuracy, Precision, Recall, F1).
+    """
     if labels is None:
         labels = ['Accuracy', 'Macro Precision', 'Macro Recall', 'Macro F1']
     angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
@@ -95,9 +134,11 @@ def create_radar_animation(output_path, deit_data, dinov2_data, siglip2_data, la
     start_siglip2 = 80
 
     def ease_out_cubic(t):
+        """Easing function: fast start, gradual slowdown."""
         return 1 - pow(1 - t, 3)
 
     def get_progress(frame, start_frame):
+        """Return 0.0 (not started) to 1.0 (fully grown) based on frame."""
         if frame < start_frame:
             return 0.0
         elif frame >= start_frame + duration:

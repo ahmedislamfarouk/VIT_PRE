@@ -1,3 +1,18 @@
+"""
+Baseline model trainer for backbone comparison experiments.
+
+The ModelTrainer class encapsulates a full training pipeline for a single
+frozen backbone + trainable head combination:
+  - Training loop with per-epoch loss tracking
+  - Validation after each epoch
+  - Cosine annealing LR schedule
+  - Automatic best-model checkpointing
+  - Final evaluation with per-class metrics and confusion matrix
+
+This is used by scripts/compare.py to train and compare DeiT, DINOv2,
+SigLIP2, and YOLOv8-World backbones under identical conditions.
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -5,13 +20,20 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
 from tqdm import tqdm
 
-from ..config import DEVICE, CHECKPOINT_DIR, CLASS_NAMES, NUM_CLASSES
+from mstd.config import DEVICE, CHECKPOINT_DIR, CLASS_NAMES, NUM_CLASSES
 
 
 class ModelTrainer:
+    """
+    Trains and evaluates a single frozen-backbone classifier.
+
+    Handles YOLOv8 (requires sub-batching due to memory) transparently.
+    Saves checkpoints to CHECKPOINT_DIR and returns full metric dicts.
+    """
+
     def __init__(self, model_name: str, train_loader: DataLoader, val_loader: DataLoader,
                  epochs: int = None, lr: float = None):
-        from ..models.backbone import BackboneClassifier
+        from mstd.models.backbone import BackboneClassifier
         self.model_name = model_name
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -32,6 +54,11 @@ class ModelTrainer:
         self.best_val_acc = 0.0
 
     def _forward(self, images: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass with optional sub-batching for YOLO.
+
+        YOLOv8 requires more memory per sample, so we process in chunks of 4.
+        """
         if self.is_yolo:
             chunks = []
             for i in range(0, images.size(0), 4):
@@ -40,6 +67,7 @@ class ModelTrainer:
         return self.model(images)
 
     def train_epoch(self) -> float:
+        """Train for one epoch, return average cross-entropy loss."""
         self.model.train()
         total_loss = 0.0
         for images, labels in tqdm(
@@ -56,6 +84,7 @@ class ModelTrainer:
 
     @torch.no_grad()
     def validate(self):
+        """Evaluate on validation set, return (avg_loss, accuracy)."""
         self.model.eval()
         total_loss = 0.0
         all_preds, all_labels = [], []
@@ -76,6 +105,12 @@ class ModelTrainer:
         return avg_loss, accuracy
 
     def train(self) -> dict:
+        """
+        Full training loop for self.epochs epochs.
+
+        Saves a checkpoint whenever a new best validation accuracy is reached.
+        Returns the training history dict.
+        """
         for epoch in range(1, self.epochs + 1):
             train_loss = self.train_epoch()
             val_loss, val_acc = self.validate()
@@ -92,6 +127,7 @@ class ModelTrainer:
         return self.history
 
     def save_checkpoint(self):
+        """Save the current head state_dict and best accuracy to disk."""
         path = CHECKPOINT_DIR / f"{self.model_name}_best.pth"
         torch.save(
             {
@@ -104,6 +140,13 @@ class ModelTrainer:
 
     @torch.no_grad()
     def evaluate(self) -> dict:
+        """
+        Full evaluation with per-class metrics and confusion matrix.
+
+        Returns a dict with:
+          model, accuracy, precision_macro, recall_macro, f1_macro,
+          per_class (precision/recall/f1 per class), confusion_matrix.
+        """
         self.model.eval()
         all_preds, all_labels = [], []
 

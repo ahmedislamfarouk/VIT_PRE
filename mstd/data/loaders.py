@@ -1,3 +1,14 @@
+"""
+DataLoader factory functions.
+
+Provides standardized DataLoader creation for different training regimes:
+  - create_dataloaders:       Standard baseline training (compare.py).
+  - create_distill_loaders:   Distillation training with teacher logits.
+  - create_subset_loaders:    Data-efficiency experiments (stratified subsets
+                              with live teacher logit computation).
+  - create_scratch_loaders:   From-scratch training with simple datasets.
+"""
+
 import os
 
 import torch
@@ -5,16 +16,22 @@ from torch.utils.data import DataLoader, Subset
 from torchvision import transforms, datasets
 from tqdm import tqdm
 
-from ..config import IMG_SIZE, IMAGENET_STATS, NUM_CLASSES, DEVICE
-from .dataset import (
+from mstd.config import IMG_SIZE, IMAGENET_STATS, NUM_CLASSES, DEVICE
+from mstd.data.dataset import (
     make_train_transform, make_val_transform,
     DistillDataset, LogitsDataset, SimpleDataset,
     get_subset_indices,
 )
-from ..models.teacher import TeacherEnsemble
+from mstd.models.teacher import TeacherEnsemble
 
 
 def create_dataloaders(dataset_path: str, batch_size: int = 32):
+    """
+    Create train/val DataLoaders for standard baseline training.
+
+    Uses moderate augmentation (flip, rotation) for training and
+    a simple resize + normalize for validation.
+    """
     train_transform = transforms.Compose([
         transforms.Resize((IMG_SIZE, IMG_SIZE)),
         transforms.RandomHorizontalFlip(),
@@ -47,6 +64,12 @@ def create_dataloaders(dataset_path: str, batch_size: int = 32):
 
 
 def create_distill_loaders(dataset_path, teacher_logits, batch_size, use_augment):
+    """
+    Create DataLoaders for distillation training.
+
+    Uses DistillDataset which returns (image, label, teacher_logits) tuples.
+    The teacher_logits are pre-computed soft targets from the teacher ensemble.
+    """
     train_transform = make_train_transform(use_augment)
     val_transform = make_val_transform()
 
@@ -69,6 +92,13 @@ def create_distill_loaders(dataset_path, teacher_logits, batch_size, use_augment
 
 
 def create_subset_loaders(dataset_path, subset_ratio, batch_size=64, seed=42):
+    """
+    Create DataLoaders for data-efficiency experiments.
+
+    A stratified subset of the training data is selected and teacher logits
+    are computed on-the-fly for that subset using the TeacherEnsemble.
+    The validation set is always full-size.
+    """
     train_transform = transforms.Compose([
         transforms.Resize((IMG_SIZE, IMG_SIZE)),
         transforms.RandomHorizontalFlip(),
@@ -118,6 +148,12 @@ def create_subset_loaders(dataset_path, subset_ratio, batch_size=64, seed=42):
 
 
 def create_scratch_loaders(dataset_path, subset_ratio, batch_size=64, seed=42):
+    """
+    Create DataLoaders for from-scratch training experiments.
+
+    Returns a tuple of (train_loader, val_loader, n_samples).
+    Uses SimpleDataset (no teacher logits), with subset selection.
+    """
     train_t = transforms.Compose([
         transforms.Resize((IMG_SIZE, IMG_SIZE)),
         transforms.RandomHorizontalFlip(),

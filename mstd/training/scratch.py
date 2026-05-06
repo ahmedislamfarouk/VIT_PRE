@@ -1,3 +1,14 @@
+"""
+From-scratch training loop for data-efficiency experiments.
+
+Trains a model from randomly initialized weights (no pretraining) using
+standard cross-entropy loss. Used to measure how each architecture performs
+when trained on limited data (5%, 10%, 25%, 50%, 100%).
+
+This is the programmatic version of the inline loop in scripts/run_scratch.py,
+useful when you want to call the training from other Python code.
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -5,6 +16,23 @@ from sklearn.metrics import accuracy_score, f1_score, precision_recall_fscore_su
 
 
 def train_scratch(model, train_loader, val_loader, epochs, lr, device):
+    """
+    Train a model from scratch with cosine annealing LR schedule.
+
+    Tracks the best validation accuracy and restores the best
+    state dict at the end.
+
+    Args:
+        model: PyTorch module (randomly initialized).
+        train_loader: DataLoader for training.
+        val_loader: DataLoader for validation.
+        epochs: Number of training epochs.
+        lr: Peak learning rate.
+        device: Device to run on.
+
+    Returns:
+        Dict with accuracy, f1_macro, precision, recall, best_acc, best_state.
+    """
     model = model.to(device)
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)

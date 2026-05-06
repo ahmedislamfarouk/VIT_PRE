@@ -1,10 +1,33 @@
+"""
+Student and scratch-training model definitions.
+
+This module contains:
+  - StudentModel: MobileViT-S with pretrained ImageNet weights + custom
+                  classification head (used for AMTD distillation).
+  - Scratch models: Lightweight architectures trained from random init
+                    (MobileViT-S, MobileViT-Hard, DeiT-Tiny, DINOv2-style
+                    ViT-S, SigLIP-style ViT-B, SimpleCNN, and AMTD mobilevit_xxs).
+
+All models follow the same pattern: timm backbone (pretrained or not) +
+a learnable classification head.
+"""
+
 import torch
 import torch.nn as nn
 
-from ..config import NUM_CLASSES
+from mstd.config import NUM_CLASSES
 
 
 class StudentModel(nn.Module):
+    """
+    Lightweight student for AMTD distillation.
+
+    Uses MobileViT-S (~5.6M params) pretrained on ImageNet as the backbone,
+    with a two-layer MLP head. The student is designed to be much smaller
+    than the teachers (~15x fewer parameters than SigLIP2) while learning
+    to mimic their ensemble predictions.
+    """
+
     def __init__(self, dropout: float = 0.3):
         super().__init__()
         import timm
@@ -21,14 +44,17 @@ class StudentModel(nn.Module):
         )
 
     def forward(self, x):
+        """Extract features, classify."""
         feats = self.backbone(x)
         return self.head(feats)
 
     def count_params(self) -> int:
+        """Return total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters())
 
 
 class MobileViTScratch(nn.Module):
+    """MobileViT-S trained from scratch (no pretrained weights)."""
     def __init__(self, num_classes=6):
         super().__init__()
         import timm
@@ -39,6 +65,7 @@ class MobileViTScratch(nn.Module):
 
 
 class MobileViTHard(nn.Module):
+    """MobileViT-S from scratch with lower dropout (harder regularization)."""
     def __init__(self, num_classes=6):
         super().__init__()
         import timm
@@ -49,6 +76,7 @@ class MobileViTHard(nn.Module):
 
 
 class DeiTScratch(nn.Module):
+    """DeiT-Tiny trained from scratch."""
     def __init__(self, num_classes=6):
         super().__init__()
         import timm
@@ -59,6 +87,7 @@ class DeiTScratch(nn.Module):
 
 
 class DINOv2Scratch(nn.Module):
+    """ViT-Small (DINOv2-style) trained from scratch."""
     def __init__(self, num_classes=6):
         super().__init__()
         import timm
@@ -69,6 +98,7 @@ class DINOv2Scratch(nn.Module):
 
 
 class SigLIPScratch(nn.Module):
+    """SigLIP ViT-B/16 trained from scratch."""
     def __init__(self, num_classes=6):
         super().__init__()
         import timm
@@ -79,6 +109,11 @@ class SigLIPScratch(nn.Module):
 
 
 class SimpleCNN(nn.Module):
+    """
+    A simple 3-layer CNN trained from scratch as a lightweight baseline.
+
+    Architecture: Conv64 -> Pool -> Conv128 -> Pool -> Conv256 -> Pool -> FC.
+    """
     def __init__(self, num_classes=6):
         super().__init__()
         self.features = nn.Sequential(nn.Conv2d(3, 64, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2), nn.Conv2d(64, 128, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2), nn.Conv2d(128, 256, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2), nn.AdaptiveAvgPool2d(1))
@@ -88,6 +123,11 @@ class SimpleCNN(nn.Module):
 
 
 class AMTDStudentScratch(nn.Module):
+    """
+    AMTD student (MobileViT-XXS) trained from scratch for data-hunger
+    experiments. Identical architecture to StudentModel but uses the
+    smaller mobilevit_xxs and no pretrained weights.
+    """
     def __init__(self, num_classes=6):
         super().__init__()
         import timm
