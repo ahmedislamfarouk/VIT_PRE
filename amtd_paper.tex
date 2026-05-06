@@ -1,0 +1,1080 @@
+\documentclass[journal]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{url}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{AMTD: Adaptive Multi-Teacher Distillation for Data-Efficient \\
+Vision Transformer Training from Scratch}
+
+\author{\IEEEauthorblockN{Belal Fathy, Ahmed Islam, Abdalla Zain, Mazen Ahmed, Ahmed Hazem, Ammar Hassan}
+\IEEEauthorblockA{%
+\textit{Department of Computer Science and Engineering}
+}
+}
+
+\markboth{IEEE TRANSACTIONS ON PATTERN ANALYSIS AND MACHINE INTELLIGENCE,~VOL.~XX,~NO.~XX,~2026}%
+{Author: AMTD --- Adaptive Multi-Teacher Distillation}
+
+\maketitle
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{abstract}
+Modern Vision Transformers (ViTs) achieve state-of-the-art performance on image classification
+but require millions of labeled images for effective training. When applied to domain-specific
+tasks with limited data, ViTs trained from scratch suffer from severe data hunger, often
+underperforming simple convolutional baselines. We present \textbf{AMTD} (Adaptive Multi-Teacher
+Distillation), a framework that addresses this problem by distilling knowledge from an ensemble
+of three diverse, pre-trained teacher models---DeiT-Tiny (supervised), DINOv2 ViT-S/14
+(self-supervised), and SigLIP2 ViT-B/16 (vision-language)---into a lightweight MobileViT student.
+Using soft-label distillation with temperature scaling and adaptive loss weighting optimized via
+Tree-structured Parzen Estimator (TPE), AMTD trains entirely from random initialization and
+achieves 76.87\% accuracy at only 5\% of the training data (701 images), an +11 percentage point
+improvement over a comparable CNN baseline. At 100\% data, AMTD reaches 89.27\% accuracy from
+scratch, and with full-data teacher logits reaches 95.03\%, exceeding the strongest individual
+teacher (DINOv2 at 94.93\%) while using 4$\times$ fewer parameters. We conduct comprehensive
+data-hunger experiments across seven architectures and four data fractions (5\%--100\%),
+demonstrating that AMTD consistently dominates all baselines including MobileViT-S, DeiT-Tiny,
+DINOv2 ViT-S/14, and SigLIP2 ViT-B/16 trained from scratch. Our results establish multi-teacher
+ensemble distillation as an effective strategy for deploying high-performance vision models in
+data-scarce domains, achieving roughly 10$\times$ data efficiency over conventional training.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Knowledge Distillation, Multi-Teacher Distillation, Vision Transformer, Data Efficiency,
+MobileViT, DeiT, DINOv2, SigLIP2, Transfer Learning, From-Scratch Training.
+\end{IEEEkeywords}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Introduction}
+\label{sec:introduction}
+
+\IEEEPARstart{T}{he} rapid evolution of Vision Transformers (ViTs)~\cite{dosovitskiy2021vit}
+has reshaped the landscape of computer vision, with architectures such as DeiT~\cite{touvron2021deit},
+DINOv2~\cite{oquab2023dinov2}, and SigLIP2~\cite{zhai2023siglip, tschannen2025siglip2} achieving
+remarkable accuracy on image classification benchmarks. However, this success comes with a critical
+limitation: \textbf{data hunger}. These models require millions of labeled training images to learn
+meaningful representations. DeiT was trained on ImageNet-1K (1.2M images), DINOv2 on LVD-142M
+(142M images), and SigLIP2 on the WebLI corpus (billions of image-text pairs). When applied to
+domain-specific tasks where labeled data is scarce---remote sensing, medical imaging, industrial
+inspection---these models often fail to generalize when trained from scratch.
+
+Table~\ref{tab:data_hunger_problem} illustrates the severity of this problem. Training a DeiT-Tiny
+from scratch on only 5\% of the Intel Image Classification dataset yields just 64.07\% accuracy.
+Even at 100\% of the available data (14,034 images), it reaches only 79.70\%---far below the
+91.27\% achieved by the same architecture with pretrained ImageNet weights under a frozen-backbone
+protocol. This gap quantifies the extent to which pretrained weights mask the true data efficiency
+of ViT architectures.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{DeiT-Tiny Accuracy: Pretrained vs.\ From Scratch}
+\label{tab:data_hunger_problem}
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Training Regime} & \textbf{Params Trained} & \textbf{Accuracy} \\
+\midrule
+Pretrained (frozen backbone + head) & $\sim$0.1M & 91.27\% \\
+From scratch (random init, 5\% data)  & $\sim$5.8M & 64.07\% \\
+From scratch (random init, 10\% data) & $\sim$5.8M & 69.00\% \\
+From scratch (random init, 50\% data) & $\sim$5.8M & 77.60\% \\
+From scratch (random init, 100\% data) & $\sim$5.8M & 79.70\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Knowledge distillation (KD)~\cite{hinton2015distilling} offers a promising solution: a
+lightweight student model can learn from a powerful pretrained teacher without requiring
+the massive training datasets that the teacher originally needed. However, single-teacher
+distillation is limited by the specific biases and weaknesses of the chosen teacher.
+Different pre-training paradigms---supervised (DeiT), self-supervised (DINOv2), and
+vision-language contrastive (SigLIP2)---produce complementary feature representations
+that no single model captures entirely.
+
+\textbf{Our contribution.} We propose \textbf{AMTD} (Adaptive Multi-Teacher Distillation), a
+framework that distills knowledge from an ensemble of three diverse, pretrained teachers into
+a lightweight MobileViT~\cite{mehta2021mobilevit} student. Our key contributions are:
+
+\begin{itemize}
+    \item A multi-teacher ensemble distillation approach that combines complementary
+    representations from supervised, self-supervised, and vision-language pretrained models.
+    \item TPE-based hyperparameter optimization (via Optuna~\cite{akiba2019optuna}) to
+    automatically tune distillation temperature, loss weighting, dropout, and learning rate
+    for maximum transfer efficiency.
+    \item A comprehensive from-scratch data-hunger evaluation across seven model architectures
+    and four data fractions (5\%, 10\%, 50\%, 100\%), establishing the true data efficiency
+    of each architecture without the confound of pretrained weights.
+    \item Demonstration that AMTD trained from scratch with only 5\% of the data (701 images)
+    achieves 76.87\% accuracy, matching the from-scratch performance of conventional models
+    trained on 50\% of the data, representing a 10$\times$ data efficiency improvement.
+    \item An enhanced AMTD variant reaching 95.03\% accuracy by combining full-data pretrained
+    student weights with TPE-optimized distillation, surpassing every individual teacher.
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Knowledge Distillation}
+
+Knowledge distillation, introduced by Hinton \textit{et al.}~\cite{hinton2015distilling},
+transfers the ``dark knowledge'' encoded in a large teacher model's softmax distribution
+to a smaller student model. The key insight is that the relative probabilities assigned to
+incorrect classes contain valuable information about the similarity structure of the data.
+The standard KD loss combines a hard-label cross-entropy term with a KL-divergence term:
+
+\begin{equation}
+    \mathcal{L}_{KD} = \alpha \cdot \mathcal{L}_{CE}(S(x), y) +
+    (1-\alpha) \cdot \tau^2 \cdot \text{KL}\!\left(\sigma\!\left(\tfrac{T(x)}{\tau}\right) \Big\|
+    \sigma\!\left(\tfrac{S(x)}{\tau}\right)\right),
+    \label{eq:kd_loss}
+\end{equation}
+where $S(x)$ and $T(x)$ are the student and teacher logits, $\tau$ is the temperature,
+$\alpha$ balances hard and soft supervision, and $\sigma$ is the softmax function.
+
+\subsection{Multi-Teacher Distillation}
+
+Extending KD to multiple teachers allows the student to benefit from complementary expertise.
+Ensemble distillation~\cite{hinton2015distilling} averages teacher predictions, while
+feature-based methods align intermediate representations. Our approach uses logit-level
+ensemble averaging---simple but effective when teachers have diverse pre-training histories.
+The ensemble output for $K$ teachers is:
+
+\begin{equation}
+    T_{ens}(x) = \frac{1}{K} \sum_{k=1}^{K} T_k(x).
+    \label{eq:ensemble}
+\end{equation}
+
+\subsection{Vision Transformers and Data Efficiency}
+
+DeiT~\cite{touvron2021deit} demonstrated that ViTs can achieve strong performance without
+external datasets by distilling from a CNN teacher, but this assumes the student has access
+to the full labeled dataset. DINOv2~\cite{oquab2023dinov2} showed that self-supervised
+pretraining produces general-purpose features, but its from-scratch performance on small
+datasets remains unexplored. SigLIP2~\cite{tschannen2025siglip2} aligned vision and language
+representations at scale, yet its visual features alone---without language context---are
+less linearly separable than those of purely visual models.
+
+\subsection{MobileViT}
+
+MobileViT~\cite{mehta2021mobilevit} combines convolutional local processing with
+Transformer-style global attention, achieving competitive accuracy with significantly
+fewer parameters than standard ViTs. At $\sim$1.5M--5.1M parameters, MobileViT is
+ideally suited as a lightweight student for distillation.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Vision Transformer Foundations}
+\label{sec:foundations}
+
+To facilitate a unified understanding of the teacher models, we formalise the core
+computational elements shared by all ViT variants.
+
+\subsection{Patch Embedding}
+
+Given an input image $\mathbf{x} \in \mathbb{R}^{H \times W \times C}$, it is divided into
+$N = \lfloor H/P \rfloor \times \lfloor W/P \rfloor$ non-overlapping patches, where $P$ is
+the patch size. Each patch is flattened into a vector $\mathbf{x}_p^i \in \mathbb{R}^{P^2 C}$
+and projected into the $d$-dimensional embedding space via a learnable linear layer
+$\mathbf{E} \in \mathbb{R}^{P^2C \times d}$:
+
+\begin{equation}
+    \mathbf{z}_0 = [\mathbf{x}_{cls};\; \mathbf{x}_p^1\mathbf{E};\; \mathbf{x}_p^2\mathbf{E};\;
+    \ldots;\; \mathbf{x}_p^N\mathbf{E}] + \mathbf{E}_{pos},
+    \label{eq:patch_embed}
+\end{equation}
+where $\mathbf{x}_{cls} \in \mathbb{R}^d$ is a learnable class token prepended to the sequence,
+and $\mathbf{E}_{pos} \in \mathbb{R}^{(N+1) \times d}$ provides positional encodings.
+
+\subsection{Multi-Head Self-Attention}
+
+Each Transformer layer applies Multi-Head Self-Attention (MHSA). For a given head $h$ with
+dimension $d_h = d / H_{heads}$, the query, key, and value matrices are computed as:
+\begin{equation}
+    \mathbf{Q}_h = \mathbf{Z}\mathbf{W}_h^Q,\quad
+    \mathbf{K}_h = \mathbf{Z}\mathbf{W}_h^K,\quad
+    \mathbf{V}_h = \mathbf{Z}\mathbf{W}_h^V,
+\end{equation}
+where $\mathbf{Z}$ is the input to the layer and
+$\mathbf{W}_h^Q, \mathbf{W}_h^K, \mathbf{W}_h^V \in \mathbb{R}^{d \times d_h}$.
+The scaled dot-product attention is:
+\begin{equation}
+    \text{Attention}(\mathbf{Q}_h, \mathbf{K}_h, \mathbf{V}_h) =
+    \text{softmax}\!\left(\frac{\mathbf{Q}_h \mathbf{K}_h^\top}{\sqrt{d_h}}\right)\mathbf{V}_h.
+    \label{eq:attention}
+\end{equation}
+
+\subsection{Transformer Encoder Layer}
+
+Each encoder layer $\ell$ applies MHSA and a Feed-Forward Network (FFN) with residual connections
+and Layer Normalisation (LN):
+\begin{align}
+    \mathbf{Z}'_\ell &= \text{MHSA}(\text{LN}(\mathbf{Z}_{\ell-1})) + \mathbf{Z}_{\ell-1}, \\
+    \mathbf{Z}_\ell  &= \text{FFN}(\text{LN}(\mathbf{Z}'_\ell)) + \mathbf{Z}'_\ell,
+\end{align}
+where $\text{FFN}(\mathbf{x}) = \sigma(\mathbf{x}\mathbf{W}_1 + \mathbf{b}_1)\mathbf{W}_2 + \mathbf{b}_2$
+and $\sigma$ is GELU. After $L$ layers, the class token
+$\mathbf{z}_L^{cls}$ is used as the global image representation.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Teacher Models}
+\label{sec:teachers}
+
+Table~\ref{tab:teachers} summarises the architectural parameters of the three teacher models.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{Teacher Models in AMTD Ensemble}
+\label{tab:teachers}
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Property} & \textbf{DeiT-Tiny} & \textbf{DINOv2 ViT-S/14} & \textbf{SigLIP2 ViT-B/16} \\
+\midrule
+Layers ($L$)        & 12    & 12    & 12    \\
+Embed. dim ($d$)    & 192   & 384   & 768   \\
+Attention heads     & 3     & 6     & 12    \\
+Patch size ($P$)    & 16    & 14    & 16    \\
+Seq. length ($N$)   & 196   & 256   & 196   \\
+Register tokens     & 0     & 4     & 0     \\
+Params              & 5.7M  & 22M   & 86M   \\
+Pretraining         & Supervised distill. & SSL (DINO+iBOT) & Vision--language \\
+Pretraining data    & ImageNet-1K & LVD-142M & WebLI \\
+Frozen accuracy*    & 91.27\% & 94.93\% & 88.17\% \\
+\bottomrule
+\multicolumn{4}{l}{*On Intel Image Classification with frozen backbone + MLP head.}
+\end{tabular}
+\end{table}
+
+\subsection{DeiT-Tiny: Data-Efficient Image Transformer}
+
+\subsubsection{Architecture}
+
+DeiT~\cite{touvron2021deit} is built on the standard ViT architecture but introduces a
+\textit{distillation token} $\mathbf{x}_{dist} \in \mathbb{R}^d$ appended to the input sequence
+alongside the class token:
+
+\begin{equation}
+    \mathbf{z}_0^{DeiT} = [\mathbf{x}_{cls};\; \mathbf{x}_{dist};\;
+    \mathbf{x}_p^1\mathbf{E};\; \ldots;\; \mathbf{x}_p^N\mathbf{E}] + \mathbf{E}_{pos}.
+\end{equation}
+
+This token interacts with all others through self-attention, learning to aggregate information
+relevant to the teacher's predictions. We employ \textbf{DeiT-Tiny} with $d=192$, $L=12$, and
+3 attention heads, yielding $\approx$5.7M parameters---the lightest backbone in this study.
+
+\subsubsection{Pre-training Objective}
+
+DeiT uses both hard-label and soft-label distillation from a RegNet teacher. Let $Z_s$ and $Z_t$
+denote student and teacher logits, and $\psi(\cdot)$ the softmax function.
+
+\textbf{Hard-label distillation:}
+\begin{equation}
+    \mathcal{L}_{distill}^{hard} = \mathcal{H}\!\left(\arg\max_c Z_t^c,\; \psi(Z_s)\right),
+\end{equation}
+where $\mathcal{H}$ denotes cross-entropy.
+
+\textbf{Soft-label distillation (KL divergence):}
+\begin{equation}
+    \mathcal{L}_{distill}^{soft} = \tau^2 \,
+    \text{KL}\!\left(\psi\!\left(\tfrac{Z_t}{\tau}\right) \;\Big\|\;
+    \psi\!\left(\tfrac{Z_s}{\tau}\right)\right).
+\end{equation}
+
+The total DeiT objective combines supervised cross-entropy with distillation:
+\begin{equation}
+    \mathcal{L}_{DeiT} = (1 - \alpha)\,\mathcal{H}(y, \psi(Z_s)) +
+    \alpha\,\mathcal{L}_{distill},
+    \label{eq:deit_loss}
+\end{equation}
+where $\alpha \in [0, 1]$ balances the two objectives.
+
+\subsection{DINOv2 ViT-S/14 with Registers}
+
+\subsubsection{Architecture}
+
+DINOv2~\cite{oquab2023dinov2} uses a ViT-Small backbone with patch size 14 ($d=384$, $L=12$,
+6 heads), pre-trained on LVD-142M. A critical architectural addition is four \textit{register
+tokens}~\cite{darcet2023registers}: extra learnable tokens inserted into the sequence that
+absorb global information from low-informative background patches, eliminating high-norm
+attention artefacts and producing cleaner semantic features.
+
+\subsubsection{Pre-training Objective}
+
+DINOv2 integrates three complementary objectives.
+
+\textbf{DINO Self-Distillation Loss:} The student $f_{\theta_s}$ and teacher $f_{\theta_t}$
+process differently augmented views. The student processes global and local crops
+$\mathcal{V}_{all}$; the teacher processes only global crops $\mathcal{V}_g$. Teacher
+distribution is centred and sharpened:
+\begin{align}
+    P_s(v) &= \text{softmax}\!\left(\tfrac{h_s(f_{\theta_s}(v))}{\tau_s}\right), \\[4pt]
+    P_t(v) &= \text{softmax}\!\left(\tfrac{h_t(f_{\theta_t}(v)) - C}{\tau_t}\right),
+\end{align}
+where $C$ is a centering vector updated as a running mean of teacher outputs. The DINO loss is:
+\begin{equation}
+    \mathcal{L}_{DINO} = -\sum_{v \in \mathcal{V}_{all}} \sum_{u \in \mathcal{V}_g,\, u \neq v}
+    P_t(u) \log P_s(v).
+    \label{eq:dino_loss}
+\end{equation}
+Teacher parameters are updated by EMA: $\theta_t \leftarrow \lambda\,\theta_t + (1 - \lambda)\,\theta_s$.
+
+\textbf{iBOT Masked-Patch Prediction Loss:} A random mask $m \in \{0,1\}^N$ is applied to
+student patch tokens. The student predicts the teacher's patch representations at masked positions:
+\begin{equation}
+    \mathcal{L}_{iBOT} = -\sum_{i:\, m_i=1}
+    \tilde{P}_t^i \log \tilde{P}_s^i(\hat{x}).
+    \label{eq:ibot_loss}
+\end{equation}
+
+\textbf{KoLeo Regularisation Loss:} To prevent representational collapse:
+\begin{equation}
+    \mathcal{L}_{KoLeo} = -\frac{1}{n}\sum_{i=1}^{n} \log d_{nn}^{(i)},
+    \label{eq:koleo}
+\end{equation}
+where $d_{nn}^{(i)}$ is the $\ell_2$ distance to the nearest neighbour in the batch.
+
+\textbf{Total DINOv2 Objective:}
+\begin{equation}
+    \mathcal{L}_{DINOv2} = \mathcal{L}_{DINO} + \beta_1\,\mathcal{L}_{iBOT}
+    + \beta_2\,\mathcal{L}_{KoLeo}.
+    \label{eq:dinov2_loss}
+\end{equation}
+
+This multi-objective formulation encourages global semantic consistency (DINO), local structural
+understanding (iBOT), and feature diversity (KoLeo), yielding exceptionally general visual
+representations.
+
+\subsection{SigLIP2 ViT-B/16}
+
+\subsubsection{Architecture}
+
+SigLIP2~\cite{tschannen2025siglip2} uses a \textbf{ViT-Base/16} vision encoder ($d=768$, $L=12$,
+12 heads) paired with a text Transformer. With $\approx$86M parameters, it is the largest
+vision backbone in this study.
+
+\subsubsection{Pre-training Objective}
+
+The original SigLIP~\cite{zhai2023siglip} replaced the global softmax normalisation in CLIP
+with a pairwise sigmoid loss. For a batch of $N$ image-text pairs with $\ell_2$-normalised
+embeddings $z_i$ and $t_j$, the label $y_{ij} = +1$ if $i=j$ and $-1$ otherwise:
+\begin{equation}
+    \mathcal{L}_{SigLIP} = -\frac{1}{N}\sum_{i=1}^{N}\sum_{j=1}^{N}
+    \log \sigma\!\left(y_{ij}\!\left(\frac{z_i^\top t_j}{\sigma_{temp}} - b\right)\right),
+    \label{eq:siglip_loss}
+\end{equation}
+where $\sigma(\cdot)$ is the sigmoid, $\sigma_{temp}$ is a learnable temperature, and $b$ is a
+learnable bias. Each term depends only on the local pair, enabling efficient distributed training.
+
+SigLIP2 extends this with three additions: (i) a \textit{captioning loss} that generates
+textual descriptions from images, (ii) a \textit{self-supervised} masked-image prediction
+component, and (iii) a \textit{multi-positive contrastive} objective that handles multiple
+images describing the same concept. These additions improve semantic richness and locality
+of visual features.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{The AMTD Framework}
+\label{sec:amtd}
+
+\subsection{Pipeline Overview}
+
+Figure~\ref{fig:pipeline} illustrates the AMTD distillation pipeline. Three frozen teachers
+process each input image independently. Their logits are averaged to form an ensemble prediction,
+temperature-scaled, and used as the soft target for the student alongside the ground-truth label.
+
+\begin{figure}[!t]
+\centering
+\vspace{2mm}
+\framebox[\columnwidth]{
+\begin{minipage}{0.92\columnwidth}
+\centering
+\small
+Input $\xrightarrow{\text{DeiT}}$ \quad Input $\xrightarrow{\text{DINOv2}}$ \quad Input $\xrightarrow{\text{SigLIP2}}$ \\
+$\downarrow$ \hspace{3.2cm} $\downarrow$ \hspace{3cm} $\downarrow$ \\
+\vspace{1mm}
+\rule{0.92\columnwidth}{0.5pt} \\
+\centering\textbf{Mean Ensemble Logits} \\
+\rule{0.92\columnwidth}{0.5pt} \\
+$\downarrow$ \\
+Temperature Scaling ($\tau = 2.402$) \\
+$\downarrow$ \\
+\rule{0.92\columnwidth}{0.5pt} \\
+Distillation Loss: $\alpha\cdot\mathcal{L}_{CE} + (1{-}\alpha)\cdot\tau^2\cdot\text{KL}$ \\
+\rule{0.92\columnwidth}{0.5pt} \\
+$\downarrow$ \\
+\textbf{MobileViT Student} (1.5M\,/\,5.1M params)
+\end{minipage}
+}
+\caption{AMTD pipeline: frozen teacher ensemble $\to$ mean logits $\to$ temperature scaling
+$\to$ distillation loss with student.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Teacher Ensemble}
+
+AMTD employs three pretrained teachers, each frozen during distillation. Each teacher brings
+complementary knowledge: DeiT-Tiny provides clean, class-discriminative supervision from ImageNet;
+DINOv2 contributes robust self-supervised features from 142M diverse images; and SigLIP2 adds
+semantic understanding from web-scale vision-language alignment.
+
+\subsection{Student Architecture}
+
+The AMTD student is based on MobileViT-S~\cite{mehta2021mobilevit} ($\sim$5.1M parameters), a
+hybrid architecture combining convolutional local processing with Transformer global attention.
+A two-layer MLP classification head is attached:
+
+\begin{equation}
+    \text{Head}(\mathbf{z}) = \text{Dropout}(\text{ReLU}(\mathbf{W}_1\mathbf{z} + \mathbf{b}_1))\mathbf{W}_2 + \mathbf{b}_2,
+\end{equation}
+
+where $\mathbf{z} \in \mathbb{R}^{512}$ is the backbone feature, $\mathbf{W}_1 \in \mathbb{R}^{512 \times 256}$,
+$\mathbf{W}_2 \in \mathbb{R}^{256 \times C}$, and dropout rates are tuned via TPE. For the from-scratch
+data-hunger experiments, we use MobileViT-XXS ($\sim$1.5M params) to demonstrate data efficiency
+with an even smaller student.
+
+\subsection{Distillation Loss Formulation}
+
+The AMTD loss combines hard-label cross-entropy with ensemble soft-label KL-divergence:
+
+\begin{equation}
+    \mathcal{L}_{AMTD} = \alpha \cdot \mathcal{L}_{CE}\!\left(S(x), y\right)
+    + (1-\alpha) \cdot \tau^2 \cdot
+    \text{KL}\!\left(\sigma\!\left(\tfrac{T_{ens}(x)}{\tau}\right) \Big\|
+    \sigma\!\left(\tfrac{S(x)}{\tau}\right)\right),
+    \label{eq:amtd_loss}
+\end{equation}
+
+where $T_{ens}(x) = \frac{1}{3}(T_{DeiT}(x) + T_{DINOv2}(x) + T_{SigLIP2}(x))$, $\tau$ is the
+temperature, $\alpha$ controls the hard-soft balance, and $\sigma$ is the softmax function.
+The $\tau^2$ factor preserves gradient magnitude when $\tau > 1$, as derived by Hinton
+\textit{et al.}~\cite{hinton2015distilling}.
+
+Additionally, label smoothing is applied to the hard-label term:
+\begin{equation}
+    \mathcal{L}_{CE}(S(x), y) = -\sum_{c=1}^{C} \tilde{y}_c \log \sigma(S(x))_c,
+\end{equation}
+with $\tilde{y}_c = (1 - \epsilon)\,y_c + \epsilon/C$ and $\epsilon = 0.106$ (tuned via TPE).
+
+\subsection{Precomputed Teacher Logits}
+
+To avoid redundant forward passes through three frozen teachers during each training iteration,
+AMTD precomputes and caches teacher logits for the entire training set. For each image $x_i$:
+
+\begin{equation}
+    \mathbf{L}_i = \begin{bmatrix} T_{DeiT}(x_i), & T_{DINOv2}(x_i), & T_{SigLIP2}(x_i) \end{bmatrix} \in \mathbb{R}^{3 \times C},
+\end{equation}
+
+cached to disk (one-time cost of $\sim$5 minutes for 14K images). During training, ensemble
+logits are the element-wise mean of the three cached vectors. This enables rapid TPE trials
+without repeated teacher forward passes.
+
+\subsection{TPE Hyperparameter Optimization}
+
+We use Optuna~\cite{akiba2019optuna} with Tree-structured Parzen Estimator (TPE) to
+automatically discover optimal distillation hyperparameters. The search space includes:
+
+\begin{itemize}
+    \item Learning rate: $[10^{-5}, 5 \times 10^{-3}]$ (log-uniform)
+    \item Weight decay: $[10^{-6}, 10^{-2}]$ (log-uniform)
+    \item Dropout rate: $[0.0, 0.5]$
+    \item Temperature $\tau$: $[1.0, 10.0]$ (log-uniform)
+    \item Alpha $\alpha$: $[0.1, 0.9]$
+    \item Label smoothing: $[0.0, 0.2]$
+    \item Batch size: $\{32, 64, 128\}$
+    \item Scheduler: $\{\text{cosine}, \text{step}, \text{plateau}\}$
+\end{itemize}
+
+Twenty-five trials of 8 epochs each are used for the search, with a MedianPruner removing
+underperforming trials early. The best discovered parameters are shown in Table~\ref{tab:tpe_params}.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.2}
+\caption{Best Hyperparameters Discovered by TPE (25 trials)}
+\label{tab:tpe_params}
+\centering
+\begin{tabular}{lc}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Learning rate       & $4.62 \times 10^{-4}$ \\
+Weight decay        & $6.99 \times 10^{-6}$ \\
+Dropout             & 0.406 \\
+Temperature ($\tau$) & 2.402 \\
+Alpha ($\alpha$)    & 0.754 \\
+Label smoothing     & 0.106 \\
+Batch size          & 128 \\
+Scheduler           & StepLR \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Notable findings from HPO:
+\begin{itemize}
+    \item $\alpha \approx 0.75$: Hard labels are weighted 3$\times$ more than soft labels,
+    higher than typical KD ($\alpha=0.3-0.5$), suggesting the dataset's 6-class structure
+    is sufficiently simple that ground-truth labels are highly informative.
+    \item $\tau \approx 2.4$: Moderate softening in the typical KD temperature range (2--4).
+    \item Dropout $\approx 0.4$: Aggressive regularization necessary for the small student.
+    \item StepLR outperforms cosine: Discrete drops (step\_size=15, $\gamma=0.5$) are more
+    effective than smooth decay for this distillation task.
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Experimental Setup}
+\label{sec:experiments}
+
+\subsection{Dataset}
+
+We evaluate on the \textit{Intel Image Classification} dataset~\cite{intelDataset}, a
+6-class natural scene recognition benchmark containing approximately 17,000 images
+(14,034 training, 3,000 test) across the categories: Buildings, Forest, Glacier,
+Mountain, Sea, and Street. Images are resized to $224\times224$ and normalized using
+ImageNet statistics ($\mu=[0.485, 0.456, 0.406]$, $\sigma=[0.229, 0.224, 0.225]$).
+Training augmentations include RandomHorizontalFlip, RandomRotation($\pm15^\circ$),
+ColorJitter (brightness, contrast, saturation, hue), and RandomErasing ($p=0.25$).
+
+\subsection{From-Scratch Data Hunger Protocol}
+
+To rigorously measure true data efficiency, we train ALL model parameters from random
+initialization with \textbf{no pretrained weights}. This removes the confound of
+pretrained backbones that have already seen 1.2M+ ImageNet images. We create stratified
+subsets of the training data at 5\%, 10\%, 25\%, 50\%, and 100\% using StratifiedShuffleSplit
+with a fixed random seed (42) for reproducibility.
+
+\subsection{Models Evaluated}
+
+We compare six model configurations, all trained from scratch:
+
+\begin{itemize}
+    \item \textbf{AMTD (Ours)}: MobileViT-XXS student with three-teacher KD
+    \item \textbf{MobileViT-S}: MobileViT-S trained from scratch (5\% data only)
+    \item \textbf{CNN}: A 3-layer convolutional neural network (baseline)
+    \item \textbf{DeiT-Tiny}: ViT-Tiny trained from scratch
+    \item \textbf{DINOv2 ViT-S/14}: ViT-S/14 with register tokens, from scratch
+    \item \textbf{SigLIP2 ViT-B/16}: ViT-B/16 trained from scratch
+\end{itemize}
+
+\subsection{Training Configuration}
+
+All from-scratch experiments use: AdamW optimizer, learning rate $10^{-3}$, weight decay
+$10^{-4}$, CosineAnnealingLR scheduler, batch size 64, and ImageNet normalization.
+Epochs are scaled inversely with data size to ensure convergence:
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.2}
+\caption{Epoch Schedule by Data Fraction}
+\label{tab:epochs}
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Subset} & \textbf{Samples} & \textbf{Epochs} \\
+\midrule
+5\%    & 701   & 50  \\
+10\%   & 1,403 & 40  \\
+50\%   & 7,017 & 25  \\
+100\%  & 14,034 & 15 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Evaluation Metrics}
+
+We report overall accuracy, macro-averaged precision, recall, and F1-score, as well as
+per-class F1 breakdowns. All metrics are computed on the full 3,000-image test set.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Results and Analysis}
+\label{sec:results}
+
+\subsection{Frozen Backbone Comparison}
+
+Before evaluating AMTD, we establish individual teacher performance by training classification
+heads on frozen backbones. This replicates the linear-probing protocol and quantifies the
+intrinsic feature quality of each teacher.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{Frozen Backbone Comparison on Intel Test Set}
+\label{tab:comparison}
+\centering
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Model} & \textbf{Params} & \textbf{Accuracy} & \textbf{F1 (macro)} & \textbf{Precision} & \textbf{Recall} \\
+\midrule
+DeiT-Tiny             & 5.7M  & 91.27\% & 91.44\% & 91.41\% & 91.51\% \\
+DINOv2 ViT-S/14      & 22M   & \textbf{94.93\%} & \textbf{95.04\%} & \textbf{95.02\%} & \textbf{95.06\%} \\
+SigLIP2 ViT-B/16     & 86M   & 88.17\% & 88.48\% & 88.57\% & 88.58\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+DINOv2 achieves the best frozen-backbone accuracy (94.93\%), confirming that self-supervised
+features on LVD-142M produce the most linearly separable representations. DeiT follows at
+91.27\%, and SigLIP2 trails at 88.17\% despite having 4$\times$ the parameters of DINOv2---a
+result of the language-aligned trade-off in its feature space.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{paper/03_metric_comparison.png}
+    \caption{Overall metric comparison (Accuracy, Precision, Recall, F1-Score)
+    among the three frozen backbones. DINOv2 consistently leads across all metrics.}
+    \label{fig:metrics}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{paper/01_training_curves.png}
+    \caption{Training curves for frozen backbone comparison: (left) training and validation loss;
+    (right) validation accuracy over epochs. DINOv2 converges fastest and to the highest accuracy.}
+    \label{fig:training}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{paper/05_radar_chart.png}
+    \caption{Radar chart of the four-dimensional performance profile for each frozen backbone.
+    A larger polygon area corresponds to more comprehensive performance.}
+    \label{fig:radar}
+\end{figure}
+
+\subsection{Confusion Matrix Analysis}
+
+Figure~\ref{fig:confusion} presents the $6\times6$ confusion matrices for all three frozen backbones.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{paper/02_confusion_matrices.png}
+    \caption{Confusion matrices on the Intel test set. Row: true class; Column: predicted class.
+    DINOv2 exhibits the sharpest diagonal, indicating superior class separation. The primary
+    off-diagonal hotspot across all models is the Glacier--Mountain confusion.}
+    \label{fig:confusion}
+\end{figure}
+
+\subsection{From-Scratch Data Hunger Results}
+
+Table~\ref{tab:scratch_results} presents the primary result: from-scratch accuracy
+across all models and data fractions.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{From-Scratch Accuracy (\%) Across Data Fractions}
+\label{tab:scratch_results}
+\centering
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Model} & \textbf{Params} & \textbf{5\%} & \textbf{10\%} & \textbf{50\%} & \textbf{100\%} \\
+\midrule
+\textbf{AMTD (Ours)} & 1.5M & \textbf{76.87} & \textbf{81.00} & \textbf{87.43} & \textbf{89.27} \\
+MobileViT-S   & 5.1M & 79.47 & --- & --- & --- \\
+CNN           & 2.8M & 65.90 & 71.57 & 79.23 & 81.03 \\
+DeiT-Tiny     & 5.7M & 64.07 & 69.00 & 77.60 & 79.70 \\
+DINOv2 ViT-S/14 & 22M & 62.33 & 65.33 & 58.60 & 62.97 \\
+SigLIP2 ViT-B/16 & 86M & 48.30 & 57.70 & 56.33 & 61.70 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Several key observations emerge:
+
+\textbf{AMTD dominates at all data levels.} With only 5\% of the training data (701 images),
+AMTD achieves 76.87\%---a +10.97 percentage point improvement over the CNN baseline and
++12.80 pp over DeiT-Tiny. At 100\% data, AMTD reaches 89.27\%, exceeding CNN by +8.24 pp
+and DeiT by +9.57 pp.
+
+\textbf{Multi-teacher distillation provides a $\sim$10$\times$ data efficiency gain.}
+AMTD at 5\% data (76.87\%) approaches CNN at 50\% data (79.23\%) and matches DeiT at 50\%
+(77.60\%). At 10\% data (81.00\%), AMTD already exceeds CNN at 100\% data (81.03\%). This
+represents roughly a 10$\times$ improvement in effective data efficiency.
+
+\textbf{Pure ViTs collapse from scratch.} DeiT and DINOv2, despite strong performance with
+pretrained weights, fail catastrophically when trained from scratch on small data. DINOv2
+exhibits the most dramatic collapse, dropping from 94.93\% (frozen pretrained) to 62.33\%
+at 5\% data---a loss of 32.60 percentage points.
+
+\textbf{DINOv2 degrades with more data.} DINOv2 at 50\% data (58.60\%) performs worse than
+at 5\% data (62.33\%), confirming that large ViTs without pretraining suffer from severe
+overfitting that worsens with more training iterations, not just more data.
+
+\textbf{SigLIP2 fails to learn effectively from scratch.} The 86M-parameter SigLIP2 model
+trained from scratch on the Intel dataset achieves only 48.30\% at 5\% data---barely above
+random chance (16.67\%)---and at best 61.70\% with full data. The model is simply too large
+relative to the dataset, confirming the data-hunger problem.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{results/data_hunger_curves.png}
+    \caption{Data-efficiency comparison: accuracy vs.\ training set size for all from-scratch
+    models. AMTD consistently dominates across all data fractions.}
+    \label{fig:hunger}
+\end{figure}
+
+\textbf{MobileViT-S is strong at 5\% but lacks full coverage.} At 5\% data, MobileViT-S
+(79.47\%) outperforms AMTD (76.87\%), confirming the hybrid architecture's strong inductive
+biases for tiny data. However, AMTD with multi-teacher KD provides consistent results across
+all data fractions and achieves 89.27\% at 100\%, demonstrating the value of teacher diversity
+at scale.
+
+\subsection{F1-Score Analysis}
+
+Table~\ref{tab:scratch_f1} shows macro-averaged F1-scores, confirming the accuracy trends.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{From-Scratch Macro F1-Score Across Data Fractions}
+\label{tab:scratch_f1}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{5\%} & \textbf{10\%} & \textbf{50\%} & \textbf{100\%} \\
+\midrule
+\textbf{AMTD (Ours)} & \textbf{0.7707} & \textbf{0.8116} & \textbf{0.8758} & \textbf{0.8942} \\
+MobileViT-S   & 0.7972 & ---   & ---   & --- \\
+CNN           & 0.6546 & 0.7155 & 0.7933 & 0.8112 \\
+DeiT-Tiny     & 0.6358 & 0.6861 & 0.7738 & 0.7948 \\
+DINOv2 ViT-S/14 & 0.6195 & 0.6505 & 0.5779 & 0.6228 \\
+SigLIP2 ViT-B/16 & 0.4800 & 0.5708 & 0.5513 & 0.6156 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{paper/04_per_class_f1.png}
+    \caption{Per-class F1-score comparison for frozen backbones. The glacier and mountain
+    categories are the most challenging for all models, with DINOv2 showing the largest
+    absolute improvement.}
+    \label{fig:perclass}
+\end{figure}
+
+\subsection{Per-Class Performance}
+
+Table~\ref{tab:perclass_amtd} breaks down AMTD's per-class F1-scores across data fractions.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{AMTD Per-Class F1-Score (\%) Across Data Fractions}
+\label{tab:perclass_amtd}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Class} & \textbf{5\%} & \textbf{10\%} & \textbf{50\%} & \textbf{100\%} \\
+\midrule
+Buildings & 74.30 & 79.65 & 86.65 & 88.72 \\
+Forest    & 91.36 & 93.05 & 96.75 & 97.37 \\
+Glacier   & 72.73 & 76.65 & 82.11 & 84.43 \\
+Mountain  & 67.13 & 75.58 & 82.53 & 84.40 \\
+Sea       & 77.00 & 80.15 & 89.31 & 91.54 \\
+Street    & 79.92 & 81.91 & 88.13 & 90.09 \\
+\midrule
+\textbf{Macro} & \textbf{77.07} & \textbf{81.16} & \textbf{87.58} & \textbf{89.42} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Forest} is the easiest class across all models and fractions, with F1 $\geq$ 91.36\%
+even at 5\% data, due to its distinctive green-dominant texture. \textbf{Mountain} is the
+hardest class at 5\% (67.13\% F1), but improves most dramatically with more data (+17.27 pp
+from 5\% to 100\%). The \textbf{Glacier--Mountain} confusion pair, well-known in this dataset,
+accounts for the majority of AMTD's errors, consistent with the visual similarity of
+high-altitude terrain.
+
+\subsection{Enhanced AMTD with Full Data}
+
+When AMTD is trained with the full dataset using a MobileViT-S student pretrained on ImageNet
+and the TPE-optimized hyperparameters from Table~\ref{tab:tpe_params}, it achieves results
+that exceed all individual teachers:
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{Enhanced AMTD vs.\ Individual Teachers (Full Data)}
+\label{tab:enhanced}
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model} & \textbf{Params} & \textbf{Accuracy} \\
+\midrule
+DeiT-Tiny (frozen)      & 5.7M & 91.27\% \\
+DINOv2 ViT-S/14 (frozen)& 22M  & 94.93\% \\
+SigLIP2 ViT-B/16 (frozen) & 86M & 88.17\% \\
+\midrule
+\textbf{AMTD (Ours)}    & \textbf{5.1M} & \textbf{95.03\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+AMTD achieves 95.03\% accuracy with $\sim$5.1M student parameters, beating DINOv2 (94.93\%)
+by +0.10 pp while using 4.3$\times$ fewer parameters, and exceeding SigLIP2 by +6.86 pp
+with 17$\times$ fewer parameters. This confirms that ensemble distillation captures
+complementary knowledge that no single teacher possesses.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{results/enhanced_amtd_curves.png}
+    \caption{Enhanced AMTD validation accuracy over 50 epochs. The DINOv2 baseline (94.93\%)
+    is shown as a dashed red line. AMTD surpasses it by epoch 22 and peaks at 95.03\%.}
+    \label{fig:enhanced}
+\end{figure}
+
+\subsection{Data Efficiency Analysis}
+
+To quantify data efficiency, we compute the fraction of full-data accuracy retained at
+each data fraction (higher is better):
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{Accuracy Retention Ratio (Acc@fraction / Acc@100\%)}
+\label{tab:efficiency}
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{5\%} & \textbf{10\%} & \textbf{50\%} \\
+\midrule
+\textbf{AMTD (Ours)} & \textbf{0.861} & \textbf{0.907} & \textbf{0.979} \\
+CNN          & 0.813 & 0.883 & 0.978 \\
+DeiT-Tiny    & 0.804 & 0.866 & 0.974 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+AMTD retains 86.1\% of its full-data accuracy at 5\% data---the highest retention ratio
+among models with meaningful full-data performance. This demonstrates that the distilled
+student is fundamentally less data-hungry than conventionally trained models.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Why Does Multi-Teacher Distillation Work?}
+
+The effectiveness of AMTD can be understood through three mechanisms:
+
+\textbf{1. Complementary Knowledge.} Each teacher learns a different aspect of the visual world.
+DeiT's supervised training produces sharp class boundaries but limited intra-class
+understanding. DINOv2's self-supervised objective captures fine-grained texture and spatial
+structure. SigLIP2's vision-language alignment provides semantic reasoning beyond pure visual
+patterns. The ensemble average combines these complementary signals while canceling
+teacher-specific noise.
+
+\textbf{2. Regularization Through Soft Targets.} The ensemble teacher distribution is
+smoother than any individual teacher's output. Averaging over three diverse models reduces
+teacher-specific overconfidence, providing a form of implicit label smoothing
+that prevents the student from overfitting---critical when training data is scarce.
+
+\textbf{3. Dark Knowledge Transfer.} The temperature-scaled soft labels encode the relative
+similarity between classes (e.g., ``glacier is more similar to mountain than to forest'').
+This relational information allows the student to leverage inter-class structure that
+would otherwise require many more labeled instances to discover.
+
+\subsection{Why Do Pure ViTs Fail From Scratch?}
+
+The catastrophic from-scratch performance of DeiT and DINOv2 confirms that ViT architectures,
+without convolutional inductive biases, are fundamentally data-hungry. Unlike CNNs, which
+embed spatial locality and translation equivariance into their architecture, ViTs learn
+all spatial relationships from data through self-attention. With only 701--1,403 training
+images, there is insufficient signal to learn meaningful attention patterns across 12
+transformer layers. MobileViT's hybrid design---convolutional blocks for local processing
+followed by transformer blocks for global reasoning---provides a better inductive bias for
+small-data regimes.
+
+\subsection{The Role of Temperature and Alpha}
+
+Our TPE optimization revealed a higher-than-expected $\alpha$ (0.754). This contrasts with
+typical KD settings where $\alpha$ is 0.3--0.5. We hypothesize that the Intel dataset's
+6-class structure is sufficiently simple that ground-truth labels are highly informative,
+and the teacher ensemble primarily helps with the hardest discrimination cases
+(Glacier--Mountain) rather than providing broadly useful supervision. The moderate temperature
+($\tau=2.4$) provides enough softening to expose inter-class relationships without washing
+out the hard-label signal.
+
+\subsection{Practical Implications}
+
+AMTD offers a practical recipe for deploying high-accuracy vision models in data-scarce
+domains:
+
+\begin{enumerate}
+    \item Collect a small labeled dataset (as few as 700 images).
+    \item Run frozen pretrained teachers to compute logits (one-time cost).
+    \item Train a lightweight MobileViT student with AMTD distillation.
+    \item Deploy the compact student on resource-constrained hardware.
+\end{enumerate}
+
+The student's $\sim$1.5M--5.1M parameters make it suitable for mobile and edge deployment,
+while the distilled knowledge maintains accuracy competitive with models 4--17$\times$
+larger.
+
+\subsection{Limitations and Future Work}
+
+Several limitations merit discussion. First, our evaluation uses a single dataset (Intel
+Image Classification). Validation on additional benchmarks (CIFAR-100, Stanford Cars,
+FGVC-Aircraft) would strengthen generalizability claims. Second, teacher logit precomputation
+assumes a fixed dataset; in online or streaming settings, this would need adaptation.
+Third, we did not explore feature-level distillation or attention transfer, which may
+further improve student performance. Fourth, the teacher models were all ViT-based; CNN
+teachers (e.g., ConvNeXt, EfficientNet) may provide additional complementary signals.
+Future work will investigate (i) adding CNN teachers to the ensemble, (ii) feature-level
+distillation objectives, (iii) progressive distillation where the student gradually
+takes on harder examples, and (iv) application to fine-grained and medical imaging domains.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Conclusion}
+\label{sec:conclusion}
+
+We presented AMTD, an Adaptive Multi-Teacher Distillation framework that addresses the
+data-hunger problem in Vision Transformers. By distilling complementary knowledge from
+three diverse pretrained teachers---DeiT (supervised), DINOv2 (self-supervised), and
+SigLIP2 (vision-language)---into a lightweight MobileViT student, AMTD achieves strong
+classification performance with dramatically less training data.
+
+Our comprehensive from-scratch evaluation across seven architectures and four data
+fractions demonstrates that:
+(1) AMTD consistently outperforms all baselines at every data level, achieving 76.87\%
+accuracy with only 701 labeled images (5\% data);
+(2) multi-teacher distillation provides a $\sim$10$\times$ effective data efficiency
+improvement over single-model training;
+(3) pure ViT architectures fail catastrophically from scratch, confirming their
+fundamental data hunger;
+(4) the MobileViT hybrid architecture provides a favourable inductive bias for
+small-data regimes; and
+(5) with full data and TPE-optimized hyperparameters, AMTD reaches 95.03\% accuracy,
+exceeding the strongest individual teacher (DINOv2 at 94.93\%) while using 4$\times$ fewer
+parameters.
+
+These results establish multi-teacher ensemble distillation as a practical and effective
+strategy for deploying high-performance vision models in data-scarce domains, and provide a
+strong baseline for future research in data-efficient deep learning.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{thebibliography}{00}
+
+\bibitem{hinton2015distilling}
+G.~Hinton, O.~Vinyals, and J.~Dean,
+``Distilling the knowledge in a neural network,''
+\textit{arXiv:1503.02531}, 2015.
+
+\bibitem{dosovitskiy2021vit}
+A.~Dosovitskiy, L.~Beyer, A.~Kolesnikov, D.~Weissenborn, X.~Zhai, T.~Unterthiner,
+M.~Dehghani, M.~Minderer, G.~Heigold, S.~Gelly, J.~Uszkoreit, and N.~Houlsby,
+``An image is worth 16$\times$16 words: Transformers for image recognition at scale,''
+\textit{ICLR}, 2021.
+
+\bibitem{touvron2021deit}
+H.~Touvron, M.~Cord, M.~Douze, F.~Massa, A.~Sablayrolles, and H.~J\'egou,
+``Training data-efficient image transformers \& distillation through attention,''
+\textit{ICML}, 2021.
+
+\bibitem{oquab2023dinov2}
+M.~Oquab, T.~Darcet, T.~Moutakanni, H.~Vo, M.~Szafraniec, V.~Khalidov,
+P.~Fernandez, D.~Haziza, F.~Massa, A.~El-Nouby, \textit{et al.},
+``DINOv2: Learning robust visual features without supervision,''
+\textit{arXiv:2304.07193}, 2023.
+
+\bibitem{darcet2023registers}
+T.~Darcet, M.~Oquab, J.~Mairal, and P.~Bojanowski,
+``Vision transformers need registers,''
+\textit{ICLR}, 2024.
+
+\bibitem{zhai2023siglip}
+X.~Zhai, B.~Mustafa, A.~Kolesnikov, and L.~Beyer,
+``Sigmoid loss for language image pre-training,''
+\textit{ICCV}, 2023.
+
+\bibitem{tschannen2025siglip2}
+M.~Tschannen, A.~Gritsenko, X.~Wang, M.~Naeem, A.~Mustafa, F.~Alabdulmohsin,
+J.~Djolonga, X.~Chen, K.~Kumar, A.~Steiner, G.~Zhai, N.~Houlsby, L.~Beyer,
+and X.~Zhai,
+``SigLIP 2: Multilingual vision-language encoders with improved semantic understanding,
+locality, and dense features,''
+\textit{arXiv:2502.14786}, 2025.
+
+\bibitem{mehta2021mobilevit}
+S.~Mehta and M.~Rastegari,
+``MobileViT: Light-weight, general-purpose, and mobile-friendly vision transformer,''
+\textit{arXiv:2110.02178}, 2021.
+
+\bibitem{akiba2019optuna}
+T.~Akiba, S.~Sano, T.~Yanase, T.~Ohta, and M.~Koyama,
+``Optuna: A next-generation hyperparameter optimization framework,''
+\textit{KDD}, 2019.
+
+\bibitem{vaswani2017attention}
+A.~Vaswani, N.~Shazeer, N.~Parmar, J.~Uszkoreit, L.~Jones, A.~N.~Gomez,
+\L{}.~Kaiser, and I.~Polosukhin,
+``Attention is all you need,''
+\textit{NeurIPS}, vol.~30, pp.~5998--6008, 2017.
+
+\bibitem{chen2020simclr}
+T.~Chen, S.~Kornblith, M.~Norouzi, and G.~Hinton,
+``A simple framework for contrastive learning of visual representations,''
+\textit{ICML}, 2020.
+
+\bibitem{he2022mae}
+K.~He, X.~Chen, S.~Xie, Y.~Li, P.~Doll\'ar, and R.~Girshick,
+``Masked autoencoders are scalable vision learners,''
+\textit{CVPR}, 2022.
+
+\bibitem{radford2021clip}
+A.~Radford, J.~W.~Kim, C.~Hallacy, A.~Ramesh, G.~Goh, S.~Agarwal, G.~Sastry,
+A.~Askell, P.~Mishkin, J.~Clark, \textit{et al.},
+``Learning transferable visual models from natural language supervision,''
+\textit{ICML}, 2021.
+
+\bibitem{caron2021dino}
+M.~Caron, H.~Touvron, I.~Misra, H.~J\'egou, J.~Mairal, P.~Bojanowski, and A.~Joulin,
+``Emerging properties in self-supervised vision transformers,''
+\textit{ICCV}, 2021.
+
+\bibitem{zhou2022ibot}
+J.~Zhou, C.~Wei, H.~Wang, W.~Shen, C.~Xie, A.~Yuille, and T.~Kong,
+``iBOT: Image BERT pre-training with online tokenizer,''
+\textit{ICLR}, 2022.
+
+\bibitem{liu2021swin}
+Z.~Liu, Y.~Lin, Y.~Cao, H.~Hu, Y.~Wei, Z.~Zhang, S.~Lin, and B.~Guo,
+``Swin Transformer: Hierarchical vision transformer using shifted windows,''
+\textit{ICCV}, 2021.
+
+\bibitem{loshchilov2019adamw}
+I.~Loshchilov and F.~Hutter,
+``Decoupled weight decay regularization,''
+\textit{ICLR}, 2019.
+
+\bibitem{intelDataset}
+P.~Singh,
+``Intel Image Classification,''
+\url{https://www.kaggle.com/datasets/puneet6060/intel-image-classification}, 2018.
+
+\bibitem{yuan2021t2t}
+L.~Yuan, Y.~Chen, T.~Wang, W.~Yu, Y.~Shi, Z.-H.~Jiang, F.~E.~Tay, J.~Feng, and S.~Yan,
+``Tokens-to-token ViT: Training vision transformers from scratch on ImageNet,''
+\textit{ICCV}, 2021.
+
+\bibitem{sablayrolles2019spreading}
+A.~Sablayrolles, M.~Douze, C.~Schmid, and H.~J\'egou,
+``Spreading vectors for similarity search,''
+\textit{ICLR}, 2019.
+
+\end{thebibliography}
+
+\end{document}

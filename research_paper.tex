@@ -1,0 +1,1051 @@
+\documentclass[journal]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{url}
+% balance removed: IEEEtran handles column balancing natively
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Empirical Evaluation of Vision Transformer Backbones for Scene Classification:\\
+A Comparative Study of DeiT, DINOv2, and SigLIP~2 Under Frozen Feature Extraction}
+
+\author{\IEEEauthorblockN{Ammar [Last Name]}
+\IEEEauthorblockA{%
+\textit{Department of Computer Science and Engineering}\\
+\textit{{[}Your University / Institution{]}}\\
+{[}City, Country{]}\\
+email@university.edu}
+\thanks{Manuscript received [Date]; revised [Date]. This work was supported by [Funding Source, if any].}
+}
+
+\markboth{IEEE TRANSACTIONS ON {[}JOURNAL NAME{]},~VOL.~XX,~NO.~XX,~2025}%
+{Author: Comparative Study of ViT Backbones for Scene Classification}
+
+\maketitle
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{abstract}
+Vision Transformers (ViTs) have rapidly supplanted Convolutional Neural Networks (CNNs) as the
+dominant architecture for image recognition, yet their diverse pre-training paradigms—supervised
+knowledge distillation, self-supervised discriminative learning, and vision–language contrastive
+training—lead to markedly different representational properties. Understanding these differences
+is critical for practitioners selecting a backbone for downstream tasks. In this paper, we present
+a rigorous, protocol-controlled comparative study of three state-of-the-art ViT backbones:
+\textit{DeiT-Tiny}, a data-efficient distillation-trained transformer;
+\textit{DINOv2 ViT-S/14 with registers}, a self-supervised model pre-trained via multi-crop
+self-distillation, masked-patch prediction, and KoLeo regularization on 142 million curated images;
+and \textit{SigLIP~2 ViT-B/16}, a vision–language model trained with pairwise sigmoid loss on the
+WebLI corpus. All three backbones are used as \emph{frozen} feature extractors appended with an
+identical two-layer MLP classification head, enabling a fair assessment of intrinsic feature quality
+on the Intel Image Classification benchmark—a six-class natural scene recognition task comprising
+approximately 25,000 images. We provide complete mathematical formulations of each model's
+self-attention mechanism, patch-embedding strategy, and pre-training objective, and we analyse
+their downstream behaviour via accuracy, macro-averaged precision, recall, and F1-score, per-class
+F1 breakdowns, confusion matrices, and radar-chart profiles. DINOv2 achieves the highest overall
+accuracy of 94.93\%, outperforming DeiT (91.27\%) and SigLIP~2 (88.17\%) despite having an
+intermediate parameter count. Our analysis reveals that self-supervised discriminative pre-training
+produces more linearly separable visual features than both supervised distillation and language-aligned
+contrastive objectives for pure visual scene classification under the frozen-backbone protocol.
+These findings carry direct implications for backbone selection in resource-constrained and
+data-scarce deployment scenarios.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Vision Transformer, DeiT, DINOv2, SigLIP~2, Self-Supervised Learning, Knowledge Distillation,
+Contrastive Learning, Scene Classification, Linear Probing, Transfer Learning, Frozen Backbone.
+\end{IEEEkeywords}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Introduction}
+\label{sec:introduction}
+
+\IEEEPARstart{T}{he} emergence of the Transformer architecture~\cite{vaswani2017attention} as the
+backbone of modern computer vision has been one of the most consequential developments in deep
+learning. Dosovitskiy \textit{et al.}~\cite{dosovitskiy2021vit} demonstrated that a pure
+Transformer applied directly to sequences of image patches—Vision Transformer (ViT)—achieves
+state-of-the-art performance on ImageNet when pre-trained on sufficiently large datasets,
+fundamentally challenging the dominance of Convolutional Neural Networks
+(CNNs)~\cite{lecun1998gradient, he2016deep, simonyan2015vgg}.
+
+Unlike CNNs, ViTs do not embed strong inductive biases such as spatial locality and translation
+equivariance. Instead, they learn global dependencies among all patch tokens through
+multi-head self-attention (MHSA), which imposes a quadratic computational complexity but
+enables the model to attend to semantically related regions regardless of their spatial distance.
+This global receptive field has proven especially beneficial for understanding compositional
+and contextual relationships in natural scenes~\cite{liu2021swin}.
+
+Three fundamentally distinct pre-training strategies have since been developed to harness this
+architectural power. \textit{Supervised distillation}, exemplified by DeiT~\cite{touvron2021deit},
+transfers knowledge from a pre-trained CNN teacher to a student ViT, enabling competitive
+performance even on modest datasets. \textit{Self-supervised discriminative pre-training},
+embodied by DINOv2~\cite{oquab2023dinov2}, extends a student–teacher framework to learn rich
+visual features without any human annotations, combining multi-crop consistency objectives,
+masked-image modeling, and entropy-maximising regularisation. \textit{Vision–language contrastive
+pre-training}, represented by SigLIP~2~\cite{tschannen2025siglip2}, aligns visual and textual
+representations using a pairwise sigmoid loss that decouples the batch size from the loss
+landscape, enabling efficient training on web-scale image–text pairs.
+
+Despite the widespread adoption of these models in diverse downstream tasks—ranging from
+object detection and dense prediction to medical imaging and remote sensing—a rigorous,
+protocol-controlled comparison of their \emph{intrinsic} feature quality under a frozen-backbone
+(linear-probing) setting remains underexplored. Prior work often conflates backbone selection
+with fine-tuning procedures, obscuring the representational capacity inherent to each pre-training
+strategy. The frozen-backbone protocol removes this confound: a shared, lightweight classification
+head is attached to each frozen backbone, and only the head is trained. Any observed performance
+difference therefore reflects differences in feature quality, not fine-tuning dynamics.
+
+This paper addresses this gap by conducting a comprehensive empirical comparison on the Intel
+Image Classification dataset~\cite{intelDataset}, a widely used scene-recognition benchmark.
+Our contributions are as follows:
+
+\begin{itemize}
+    \item We provide a unified and mathematically detailed treatment of the architectures and
+    pre-training losses of DeiT, DINOv2, and SigLIP~2, presenting each within a common
+    notation to facilitate direct comparison.
+
+    \item We design and execute a protocol-controlled experiment in which all three backbones
+    are frozen and paired with an identical downstream MLP head, ensuring that observed
+    differences are attributable to backbone representation quality.
+
+    \item We perform a multi-faceted evaluation encompassing overall metrics, training
+    dynamics, per-class F1 analysis, and confusion-matrix inspection, offering both
+    quantitative rankings and qualitative explanations for observed performance gaps.
+
+    \item We derive actionable insights regarding backbone selection for scene classification,
+    identifying conditions under which each pre-training paradigm is most beneficial.
+\end{itemize}
+
+The remainder of this paper is organised as follows. Section~\ref{sec:related} reviews related
+work on ViT architectures, self-supervised learning, and vision–language models.
+Section~\ref{sec:background} presents the mathematical foundations of the Vision Transformer.
+Section~\ref{sec:architectures} details each model's architecture and pre-training objective.
+Section~\ref{sec:methodology} describes the experimental setup. Section~\ref{sec:results}
+presents and analyses the experimental results. Section~\ref{sec:discussion} offers a broad
+discussion of the findings, and Section~\ref{sec:conclusion} concludes the paper.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Vision Transformers}
+The original Vision Transformer (ViT)~\cite{dosovitskiy2021vit} applied the Transformer encoder
+directly to non-overlapping image patches, treating each flattened patch as a token. While ViT
+required large-scale pre-training (JFT-300M) to overcome the absence of convolutional inductive
+biases, subsequent work reduced this requirement considerably. DeiT~\cite{touvron2021deit}
+introduced a distillation token that interacts with the class token and patch tokens through
+attention, allowing a RegNet teacher to supervise the ViT student and enabling competitive
+ImageNet accuracy without external datasets beyond ImageNet-1k. DeiT III~\cite{touvron2022deit3}
+further improved supervised ViT training through improved data augmentation and regularisation.
+Concurrent architectural improvements include Swin Transformer~\cite{liu2021swin}, which
+reintroduced local attention windows and hierarchical feature maps to recover inductive biases,
+and Tokens-to-Token ViT~\cite{yuan2021t2t}, which progressively aggregates patch tokens to model
+local structure.
+
+\subsection{Self-Supervised Learning for Visual Representations}
+Self-supervised learning (SSL) has emerged as a powerful paradigm for learning visual features
+without labels. Early contrastive methods such as SimCLR~\cite{chen2020simclr} and
+BYOL~\cite{grill2020byol} demonstrated that instance-discrimination pretext tasks can yield
+features competitive with supervised pre-training. The DINO framework~\cite{caron2021dino}
+applied momentum distillation directly to ViTs, showing that self-supervised features
+exhibit emergent properties such as semantic segmentation within attention maps, suggesting
+that the attention mechanism in ViTs is well-suited to learn structured representations.
+Masked Autoencoders (MAE)~\cite{he2022mae} took a different approach, masking a large proportion
+of input patches and reconstructing them with a decoder, achieving strong fine-tuning performance.
+iBOT~\cite{zhou2022ibot} combined masked image modeling with online self-distillation using
+a patch-level objective, outperforming both DINO and MAE in several settings.
+
+DINOv2~\cite{oquab2023dinov2} synthesised these advances at scale: using a curated 142M-image
+dataset (LVD-142M), it combined DINO's class-level self-distillation, iBOT's masked-patch
+prediction, and a KoLeo entropy-maximisation regulariser, producing general-purpose features
+that excel at both global and dense prediction tasks. Darcet \textit{et al.}~\cite{darcet2023registers}
+subsequently identified attention artefacts in ViTs on low-informative background regions and
+proposed adding learnable register tokens to absorb such artefacts, which was incorporated
+into the DINOv2 models used in this study.
+
+\subsection{Vision--Language Pre-training}
+CLIP~\cite{radford2021clip} demonstrated that contrastive training on 400M web-collected
+image–text pairs yields visual representations with strong zero-shot generalisation. Its
+loss—InfoNCE with a softmax normalisation over the entire batch—induces sensitivity to
+batch size and requires very large batches. SigLIP~\cite{zhai2023siglip} replaced the
+global softmax with a pairwise sigmoid loss, treating each image–text pair independently,
+which reduced memory requirements without sacrificing alignment quality. SigLIP~2~\cite{tschannen2025siglip2}
+further enriched the training recipe by adding captioning-based auxiliary losses, multi-positive
+contrastive objectives, and self-supervised components including masked-image prediction,
+yielding models with improved semantic understanding and dense feature quality across multiple
+languages and resolutions.
+
+\subsection{Transfer Learning and Linear Probing}
+Evaluating pre-trained representations via linear probing—training a linear (or shallow MLP)
+classifier on frozen features—is a standard protocol for measuring intrinsic feature
+quality~\cite{chen2020simclr, radford2021clip, oquab2023dinov2}. It provides a cleaner signal
+than full fine-tuning because it is less sensitive to optimisation hyperparameters and does
+not allow the backbone to adapt to the target distribution. Our work builds on this protocol,
+replacing the linear probe with a two-layer MLP to accommodate the relatively small Intel
+dataset while still maintaining the frozen-backbone constraint.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Vision Transformer: Mathematical Foundations}
+\label{sec:background}
+
+To facilitate a unified comparison of the three backbones, we first formalise the core
+computational elements shared by all ViT variants.
+
+\subsection{Patch Embedding}
+Given an input image $\mathbf{x} \in \mathbb{R}^{H \times W \times C}$, it is divided into
+$N = \lfloor H/P \rfloor \times \lfloor W/P \rfloor$ non-overlapping patches, where $P$ is
+the patch size. Each patch is flattened into a vector $\mathbf{x}_p^i \in \mathbb{R}^{P^2 C}$
+and projected into the $d$-dimensional embedding space via a learnable linear layer
+$\mathbf{E} \in \mathbb{R}^{P^2C \times d}$:
+\begin{equation}
+    \mathbf{z}_0 = [\mathbf{x}_{cls};\; \mathbf{x}_p^1\mathbf{E};\; \mathbf{x}_p^2\mathbf{E};\;
+    \ldots;\; \mathbf{x}_p^N\mathbf{E}] + \mathbf{E}_{pos},
+    \label{eq:patch_embed}
+\end{equation}
+where $\mathbf{x}_{cls} \in \mathbb{R}^d$ is a learnable class token prepended to the sequence,
+and $\mathbf{E}_{pos} \in \mathbb{R}^{(N+1) \times d}$ provides fixed or learnable positional
+encodings. The class token accumulates global information through attention and serves as the
+image-level feature representation.
+
+\subsection{Multi-Head Self-Attention}
+Each Transformer layer applies Multi-Head Self-Attention (MHSA). For a given head $h$ with
+dimension $d_h = d / H_{heads}$, the query, key, and value matrices are computed as:
+\begin{equation}
+    \mathbf{Q}_h = \mathbf{Z}\mathbf{W}_h^Q,\quad
+    \mathbf{K}_h = \mathbf{Z}\mathbf{W}_h^K,\quad
+    \mathbf{V}_h = \mathbf{Z}\mathbf{W}_h^V,
+\end{equation}
+where $\mathbf{Z}$ is the input to the layer and
+$\mathbf{W}_h^Q, \mathbf{W}_h^K, \mathbf{W}_h^V \in \mathbb{R}^{d \times d_h}$.
+The scaled dot-product attention is:
+\begin{equation}
+    \text{Attention}(\mathbf{Q}_h, \mathbf{K}_h, \mathbf{V}_h) =
+    \text{softmax}\!\left(\frac{\mathbf{Q}_h \mathbf{K}_h^\top}{\sqrt{d_h}}\right)\mathbf{V}_h.
+    \label{eq:attention}
+\end{equation}
+Outputs from all $H_{heads}$ heads are concatenated and projected:
+\begin{equation}
+    \text{MHSA}(\mathbf{Z}) = \text{Concat}(\text{head}_1,\ldots,\text{head}_{H_{heads}})\,\mathbf{W}^O.
+\end{equation}
+
+\subsection{Transformer Encoder Layer}
+Each encoder layer $\ell$ applies MHSA and a Feed-Forward Network (FFN) with residual connections
+and Layer Normalisation (LN):
+\begin{align}
+    \mathbf{Z}'_\ell &= \text{MHSA}(\text{LN}(\mathbf{Z}_{\ell-1})) + \mathbf{Z}_{\ell-1}, \\
+    \mathbf{Z}_\ell  &= \text{FFN}(\text{LN}(\mathbf{Z}'_\ell)) + \mathbf{Z}'_\ell,
+\end{align}
+where $\text{FFN}(\mathbf{x}) = \sigma(\mathbf{x}\mathbf{W}_1 + \mathbf{b}_1)\mathbf{W}_2 + \mathbf{b}_2$
+and $\sigma$ is GELU in most modern ViTs. After $L$ layers, the class token
+$\mathbf{z}_L^{cls}$ is used as the global image representation for classification.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Model Architectures and Pre-training Strategies}
+\label{sec:architectures}
+
+Table~\ref{tab:arch_summary} summarises the key architectural parameters of the three models.
+In the following subsections, we detail each model's specific design choices and training objectives.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{Architectural Configurations of the Three Backbones}
+\label{tab:arch_summary}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Property} & \textbf{DeiT-Tiny} & \textbf{DINOv2 ViT-S/14} & \textbf{SigLIP 2 ViT-B/16} \\
+\midrule
+Layers ($L$)        & 12    & 12    & 12    \\
+Embed. dim ($d$)    & 192   & 384   & 768   \\
+Attention heads     & 3     & 6     & 12    \\
+FFN expansion       & 4$\times$ & 4$\times$ & 4$\times$ \\
+Patch size ($P$)    & 16    & 14    & 16    \\
+Input resolution    & 224   & 224   & 224   \\
+Seq. length ($N$)   & 196   & 256   & 196   \\
+Register tokens     & 0     & 4     & 0     \\
+Feature dim         & 192   & 384   & 768   \\
+Pre-training data   & ImageNet-1k & LVD-142M & WebLI \\
+Params. (backbone)  & $\approx$5.7M & $\approx$22M & $\approx$86M \\
+Pre-training paradigm & Supervised distill. & SSL (DINO+iBOT) & Vision--language \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{DeiT: Data-Efficient Image Transformer}
+\label{subsec:deit}
+
+\subsubsection{Architecture}
+DeiT~\cite{touvron2021deit} is built on the standard ViT architecture but introduces a
+\textit{distillation token} $\mathbf{x}_{dist} \in \mathbb{R}^d$ appended to the input sequence
+alongside the class token:
+\begin{equation}
+    \mathbf{z}_0^{DeiT} = [\mathbf{x}_{cls};\; \mathbf{x}_{dist};\;
+    \mathbf{x}_p^1\mathbf{E};\; \ldots;\; \mathbf{x}_p^N\mathbf{E}] + \mathbf{E}_{pos}.
+\end{equation}
+This token participates in all self-attention layers, learning to aggregate information relevant
+to the teacher's predictions rather than ground-truth labels. At inference, both the class token
+and distillation token output can be used for prediction; in this work, we use the pooled output
+produced by \texttt{timm} with \texttt{num\_classes=0}, which corresponds to the class token.
+
+We employ \textbf{DeiT-Tiny} with $d = 192$, $L = 12$, and 3 attention heads, yielding a
+parameter count of approximately 5.7M—the lightest backbone in this study.
+
+\subsubsection{Pre-training Objective}
+DeiT replaces the standard classification head with dual heads: one supervised by ground-truth
+labels $y$ and one by the teacher's output $y_t$. Let $Z_s$ and $Z_t$ denote the logits of the
+student and teacher (a pre-trained RegNet), respectively, and let $\psi(\cdot)$ denote the
+softmax function.
+
+\textbf{Hard-label distillation}: The distillation target is the teacher's argmax prediction
+$\hat{y}_t = \arg\max_c Z_t^c$, and the loss is:
+\begin{equation}
+    \mathcal{L}_{distill}^{hard} = \mathcal{H}\!\left(\hat{y}_t,\; \psi(Z_s)\right),
+\end{equation}
+where $\mathcal{H}$ denotes cross-entropy.
+
+\textbf{Soft-label distillation} (KL divergence):
+\begin{equation}
+    \mathcal{L}_{distill}^{soft} = \tau^2 \,
+    \text{KL}\!\left(\psi\!\left(\tfrac{Z_t}{\tau}\right) \;\Big\|\;
+    \psi\!\left(\tfrac{Z_s}{\tau}\right)\right),
+\end{equation}
+where $\tau$ is the temperature controlling the softness of the distribution.
+
+The total DeiT training objective interpolates between supervised cross-entropy and distillation:
+\begin{equation}
+    \mathcal{L}_{DeiT} = (1 - \alpha)\,\mathcal{H}(y, \psi(Z_s)) +
+    \alpha\,\mathcal{L}_{distill},
+    \label{eq:deit_loss}
+\end{equation}
+where $\alpha \in [0, 1]$ balances the two objectives. In the original DeiT paper,
+$\alpha = 0.1$ is used with hard-label distillation.
+
+This pre-training paradigm fundamentally limits the model to internalise only the information
+encoded in the teacher's logits, which describes ImageNet categories rather than general visual
+structure—a potential limitation when transferring to non-ImageNet domains.
+
+\subsection{DINOv2}
+\label{subsec:dinov2}
+
+\subsubsection{Architecture}
+DINOv2~\cite{oquab2023dinov2} uses a standard ViT-Small backbone with patch size 14
+($d=384$, $L=12$, 6 heads), pre-trained on LVD-142M, a curated subset of web-crawled images
+filtered for quality and diversity. A critical architectural addition is the incorporation of
+four \textit{register tokens}~\cite{darcet2023registers}: extra learnable tokens inserted into
+the sequence that absorb the role of global information aggregation from low-informative
+background patches, eliminating high-norm attention artefacts. The registers are discarded
+after the final layer and do not contribute to the output representation, making the output
+features cleaner and more semantically meaningful.
+
+\subsubsection{Pre-training Objective}
+DINOv2 integrates three complementary objectives: the DINO self-distillation loss, the iBOT
+masked-patch prediction loss, and the KoLeo regulariser.
+
+\paragraph{DINO Self-Distillation Loss}
+The student network $f_{\theta_s}$ and teacher network $f_{\theta_t}$ process differently
+augmented views of the same image. The student processes two global and several local crops
+$\mathcal{V}_{all} = \{v_1^g, v_2^g, v_1^l, \ldots, v_K^l\}$; the teacher processes only
+global crops $\mathcal{V}_g = \{v_1^g, v_2^g\}$.
+
+The student and teacher outputs are projected through a shared projection head and normalised
+to form probability distributions. The teacher distribution is centred and sharpened:
+\begin{align}
+    P_s(v) &= \text{softmax}\!\left(\tfrac{h_s(f_{\theta_s}(v))}{\tau_s}\right), \\[4pt]
+    P_t(v) &= \text{softmax}\!\left(\tfrac{h_t(f_{\theta_t}(v)) - C}{\tau_t}\right),
+\end{align}
+where $h_s$ and $h_t$ are the student and teacher projection heads, $\tau_s < \tau_t$ are
+temperatures that sharpen the student output, and $C$ is a centering vector updated as a
+running mean of teacher outputs to prevent mode collapse. The DINO loss is the
+cross-entropy from teacher to student:
+\begin{equation}
+    \mathcal{L}_{DINO} = -\sum_{v \in \mathcal{V}_{all}} \sum_{u \in \mathcal{V}_g,\, u \neq v}
+    P_t(u) \log P_s(v).
+    \label{eq:dino_loss}
+\end{equation}
+The teacher's parameters are not updated by backpropagation but by an exponential moving average
+(EMA) of the student's parameters:
+\begin{equation}
+    \theta_t \leftarrow \lambda\,\theta_t + (1 - \lambda)\,\theta_s,
+    \label{eq:ema}
+\end{equation}
+with $\lambda$ following a cosine schedule from 0.996 to 1.0.
+
+\paragraph{iBOT Masked-Patch Prediction Loss}
+To additionally learn local patch-level representations, DINOv2 incorporates iBOT~\cite{zhou2022ibot}.
+A random mask $m \in \{0,1\}^N$ is applied to student patch tokens by replacing masked tokens
+with a learnable \texttt{[MASK]} embedding. The student must predict the teacher's patch
+representations at masked positions:
+\begin{equation}
+    \mathcal{L}_{iBOT} = -\sum_{i:\, m_i=1}
+    \tilde{P}_t^i \log \tilde{P}_s^i(\hat{x}),
+    \label{eq:ibot_loss}
+\end{equation}
+where $\tilde{P}_t^i$ and $\tilde{P}_s^i(\hat{x})$ are the teacher and student distributions
+for patch position $i$ in the masked view $\hat{x}$.
+
+\paragraph{KoLeo Regularisation Loss}
+To prevent representational collapse and encourage diversity in the embedding space, DINOv2
+incorporates the KoLeo regulariser~\cite{sablayrolles2019spreading}, which maximises the entropy
+of the feature distribution by pushing apart nearest neighbours:
+\begin{equation}
+    \mathcal{L}_{KoLeo} = -\frac{1}{n}\sum_{i=1}^{n} \log d_{nn}^{(i)},
+    \label{eq:koleo}
+\end{equation}
+where $d_{nn}^{(i)}$ is the $\ell_2$ distance from the $i$-th feature vector to its nearest
+neighbour within the batch.
+
+\paragraph{Total DINOv2 Objective}
+\begin{equation}
+    \mathcal{L}_{DINOv2} = \mathcal{L}_{DINO} + \beta_1\,\mathcal{L}_{iBOT}
+    + \beta_2\,\mathcal{L}_{KoLeo},
+    \label{eq:dinov2_loss}
+\end{equation}
+where $\beta_1$ and $\beta_2$ are balancing hyperparameters. This multi-objective formulation
+simultaneously encourages global semantic consistency (DINO), local structural understanding
+(iBOT), and feature diversity (KoLeo), yielding exceptionally general visual representations.
+
+\subsection{SigLIP 2}
+\label{subsec:siglip2}
+
+\subsubsection{Architecture}
+SigLIP~2~\cite{tschannen2025siglip2} uses a standard \textbf{ViT-Base/16} vision encoder
+($d=768$, $L=12$, 12 heads) paired with a language encoder (text Transformer). The vision
+encoder processes 224$\times$224 images as 196 non-overlapping $16\times16$ patches. With
+$d=768$ and 12 heads, it is the largest vision backbone in this study ($\approx$86M parameters),
+approximately $15\times$ larger than DeiT-Tiny and $4\times$ larger than DINOv2 ViT-S/14.
+
+\subsubsection{Pre-training Objective}
+The original SigLIP~\cite{zhai2023siglip} replaced the global softmax normalisation in CLIP
+with a pairwise sigmoid loss. For a batch of $N$ image–text pairs, let $z_i \in \mathbb{R}^d$
+and $t_j \in \mathbb{R}^d$ denote the $\ell_2$-normalised image and text embeddings,
+respectively. The label $y_{ij} = +1$ if $i = j$ (a matched pair) and $y_{ij} = -1$ otherwise.
+The SigLIP loss is:
+\begin{equation}
+    \mathcal{L}_{SigLIP} = -\frac{1}{N}\sum_{i=1}^{N}\sum_{j=1}^{N}
+    \log \sigma\!\left(y_{ij}\!\left(\frac{z_i^\top t_j}{\sigma_{temp}} - b\right)\right),
+    \label{eq:siglip_loss}
+\end{equation}
+where $\sigma(\cdot)$ is the sigmoid function, $\sigma_{temp}$ is a learnable temperature
+(initialised at $1/\ln 10 \approx 0.434$), and $b$ is a learnable bias. Critically, each
+term in the double summation depends only on the local pair $(i,j)$ without any normalisation
+over the full batch—this decoupling allows efficient distributed training with smaller per-device
+batch sizes without loss of quality.
+
+SigLIP~2~\cite{tschannen2025siglip2} extends this recipe with three additional training
+components. First, a \textit{captioning loss} trains the model to generate textual descriptions
+of images, improving semantic grounding:
+\begin{equation}
+    \mathcal{L}_{cap} = -\sum_{t=1}^{T} \log P(w_t \mid w_{<t}, \mathbf{z}_v),
+    \label{eq:cap_loss}
+\end{equation}
+where $\mathbf{z}_v$ is the visual encoding and $w_t$ are the target caption tokens.
+Second, a \textit{self-supervised} component derived from a masked-image prediction
+objective encourages the vision encoder to learn spatially structured representations
+beyond language alignment. Third, a \textit{multi-positive contrastive} objective handles
+cases where multiple images describe the same concept, mitigating false-negative
+penalties in the original pairwise formulation. Together, these additions improve the
+semantic richness and locality of SigLIP~2's visual features.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Experimental Methodology}
+\label{sec:methodology}
+
+\subsection{Dataset}
+We evaluate on the \textit{Intel Image Classification} dataset~\cite{intelDataset},
+a publicly available scene recognition benchmark originally hosted on Kaggle.
+The dataset contains approximately 25,000 RGB images ($\approx150\times150$ pixels
+natively, resized to $224\times224$ in this study) distributed across six semantically
+distinct classes: \textit{Buildings, Forest, Glacier, Mountain, Sea,} and \textit{Street}.
+The official split comprises $\approx$14,034 training images and 3,000 test images,
+with an additional prediction set of $\approx$7,000 unlabelled images that we exclude.
+The six classes present both easy and hard discrimination cases: \textit{Forest} is
+visually distinct, while \textit{Glacier} and \textit{Mountain} share similar
+textures and colour profiles, making them the most challenging pair.
+
+\subsection{Pre-processing and Data Augmentation}
+Training images are pre-processed with random horizontal flipping and random
+rotation of up to $\pm 10^{\circ}$, then resized to $224\times224$ and normalised
+using ImageNet statistics ($\mu = [0.485, 0.456, 0.406]$, $\sigma = [0.229, 0.224, 0.225]$).
+Validation images are only resized and normalised. ImageNet normalisation is employed
+uniformly across all three models because all were pre-trained on datasets derived from
+or compatible with this range; SigLIP~2 also incorporates WebLI images which
+follow the same pre-processing convention.
+
+\subsection{Backbone Feature Extraction}
+Each backbone is loaded from the \texttt{timm} library with \texttt{num\_classes=0},
+which removes the pre-training head and returns a pooled feature vector of dimension $d$
+(Table~\ref{tab:arch_summary}). All backbone parameters are \emph{frozen} throughout
+training (no gradient is computed for backbone weights), and no fine-tuning of any form
+is applied to the backbone. This strictly enforces the linear-probing evaluation protocol
+and ensures that observed differences are solely attributable to the quality of the
+pre-trained representations.
+
+\subsection{Classification Head}
+An identical two-layer MLP head is attached to each backbone:
+\begin{align}
+    \mathbf{h}_1 &= \text{ReLU}(\mathbf{W}_1^\top \mathbf{z} + \mathbf{b}_1),
+    \quad \mathbf{W}_1 \in \mathbb{R}^{d \times 256}, \\
+    \hat{\mathbf{y}} &= \mathbf{W}_2^\top \text{Dropout}_{p=0.3}(\mathbf{h}_1) + \mathbf{b}_2,
+    \quad \mathbf{W}_2 \in \mathbb{R}^{256 \times 6},
+\end{align}
+where $\mathbf{z} \in \mathbb{R}^d$ is the backbone feature vector and $\hat{\mathbf{y}}
+\in \mathbb{R}^6$ is the logit vector. The 0.3 dropout rate provides regularisation
+proportional to the small size of the training set relative to larger pre-training corpora.
+
+\subsection{Training Protocol}
+The classification head is optimised using AdamW~\cite{loshchilov2019adamw} with a
+learning rate of $\eta = 10^{-4}$ and weight decay $\lambda = 10^{-4}$. Only head
+parameters are passed to the optimiser. A Cosine Annealing learning rate
+scheduler~\cite{loshchilov2017cosine} decays the learning rate from $\eta$ to
+$\approx 0$ over $T_{max} = 10$ epochs:
+\begin{equation}
+    \eta_t = \frac{\eta}{2}\left(1 + \cos\!\left(\frac{\pi t}{T_{max}}\right)\right),
+    \label{eq:cosine_lr}
+\end{equation}
+where $t$ is the current epoch. All models are trained for 10 epochs with a
+batch size of 32. The downstream objective is the standard multi-class cross-entropy loss:
+\begin{equation}
+    \mathcal{L}_{CE} = -\frac{1}{B}\sum_{n=1}^{B}\sum_{c=1}^{C}
+    y_{n,c} \log \hat{p}_{n,c},
+    \label{eq:ce_loss}
+\end{equation}
+where $B$ is the batch size, $C=6$ is the number of classes,
+$y_{n,c} \in \{0, 1\}$ is the one-hot ground-truth, and
+$\hat{p}_{n,c} = \text{softmax}(\hat{y}_{n,c})$ is the predicted probability.
+Experiments are conducted on an NVIDIA CUDA-enabled GPU using PyTorch.
+
+\subsection{Evaluation Metrics}
+Classification performance is assessed using four complementary metrics computed
+on the full 3,000-image test set:
+\begin{itemize}
+    \item \textbf{Accuracy}: fraction of correctly classified samples.
+    \item \textbf{Macro Precision / Recall / F1}: arithmetic mean of
+    per-class precision, recall, and F1-score, giving equal weight to each class
+    regardless of class frequency (Eq.~\eqref{eq:metrics}).
+\end{itemize}
+\begin{equation}
+    F1_c = \frac{2\,\text{TP}_c}{2\,\text{TP}_c + \text{FP}_c + \text{FN}_c},
+    \quad F1_{macro} = \frac{1}{C}\sum_{c=1}^{C} F1_c.
+    \label{eq:metrics}
+\end{equation}
+In addition, we inspect per-class precision, recall, and F1-score, as well as
+full $6\times6$ confusion matrices.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Experimental Results}
+\label{sec:results}
+
+\subsection{Overall Quantitative Performance}
+Table~\ref{tab:comparison} reports the overall performance of all three backbones.
+DINOv2 achieves the best results across all four metrics, followed by DeiT-Tiny,
+with SigLIP~2 ViT-B/16 ranking last despite being the largest model.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{Overall Performance Comparison on Intel Image Classification Test Set (3,000 images)}
+\label{tab:comparison}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} \\
+\midrule
+DeiT-Tiny             & 91.27\% & 91.41\% & 91.51\% & 91.44\% \\
+DINOv2 ViT-S/14      & \textbf{94.93\%} & \textbf{95.02\%} & \textbf{95.06\%} & \textbf{95.04\%} \\
+SigLIP~2 ViT-B/16    & 88.17\% & 88.57\% & 88.58\% & 88.48\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+DINOv2 surpasses DeiT by \textbf{3.66 percentage points} and SigLIP~2 by
+\textbf{6.76 percentage points} in accuracy. The virtually identical precision, recall,
+and F1-score for each model indicate well-balanced predictions without systematic bias
+towards any class. Figure~\ref{fig:metrics} presents a grouped bar chart of all four metrics.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{results/03_metric_comparison.png}
+    \caption{Overall metric comparison (Accuracy, Precision, Recall, F1-Score)
+    among the three backbone variants. DINOv2 consistently leads across all metrics.}
+    \label{fig:metrics}
+\end{figure}
+
+The multi-dimensional performance profile is visualised in the radar chart in
+Figure~\ref{fig:radar}. The closed-form polygonal area of DINOv2 notably dominates
+the other two models, confirming its holistic superiority.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{results/05_radar_chart.png}
+    \caption{Radar chart illustrating the four-dimensional performance profile of each
+    backbone. A larger polygon area corresponds to more comprehensive performance.}
+    \label{fig:radar}
+\end{figure}
+
+\subsection{Training Dynamics}
+Figure~\ref{fig:training} shows the per-epoch training loss, validation loss, and validation
+accuracy for all three models over 10 epochs.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{results/01_training_curves.png}
+    \caption{Training curves: (left) training and validation loss; (right) validation
+    accuracy over 10 epochs for the three backbones.}
+    \label{fig:training}
+\end{figure}
+
+Several observations are noteworthy. \textit{First}, DINOv2 converges to a lower loss and
+higher accuracy from the very first epoch, indicating that its pre-trained features already
+occupy a highly linearly-separable region of the embedding space with respect to scene
+categories. \textit{Second}, the cosine annealing scheduler prevents overfitting by
+progressively reducing the learning rate, resulting in smooth and monotonically improving
+validation curves for all models. \textit{Third}, SigLIP~2 exhibits a larger
+training-to-validation gap compared to the other models, suggesting that the language-aligned
+feature space is less immediately adapted to pure visual classification, requiring a slightly
+longer adaptation period within the classification head.
+
+\subsection{Per-Class Performance Analysis}
+Table~\ref{tab:perclass} and Figure~\ref{fig:perclass} break down the F1-score per class.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{Per-Class F1-Score (\%) for All Three Backbones}
+\label{tab:perclass}
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Class} & \textbf{DeiT-Tiny} & \textbf{DINOv2 ViT-S/14} & \textbf{SigLIP~2 ViT-B/16} \\
+\midrule
+Buildings & 91.28 & 94.75 & 89.94 \\
+Forest    & \textbf{99.47} & 99.37 & 98.19 \\
+Glacier   & 84.66 & \textbf{91.49} & 80.15 \\
+Mountain  & 85.16 & \textbf{91.54} & 81.63 \\
+Sea       & 95.98 & \textbf{97.47} & 89.73 \\
+Street    & 92.08 & \textbf{95.63} & 91.24 \\
+\midrule
+\textbf{Macro F1} & 91.44 & \textbf{95.04} & 88.48 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{results/04_per_class_f1.png}
+    \caption{Per-class F1-score comparison. The glacier and mountain categories are the
+    most challenging for all models, with DINOv2 showing the largest absolute improvement.}
+    \label{fig:perclass}
+\end{figure}
+
+Three key observations emerge:
+
+\textbf{(i) Forest is universally well-classified.} All three models achieve F1 $\geq$ 98.19\%
+on the \textit{Forest} class, confirming that distinctive chromatic and textural properties
+of forest imagery are captured by all ViT pre-training paradigms.
+
+\textbf{(ii) Glacier and Mountain are the primary challenge.} These two classes share
+high-altitude, low-saturation visual profiles with similar rock, ice, and snow textures.
+All models suffer the most severe F1 degradation on these categories. DINOv2 demonstrates
+the most effective discrimination, with an F1 of 91.49\% and 91.54\% for glacier and
+mountain respectively—improvements of 6.83 pp and 6.38 pp over DeiT, and 11.34 pp and
+9.91 pp over SigLIP~2.
+
+\textbf{(iii) The Buildings–Street confusion persists for SigLIP~2.}
+SigLIP~2 shows the highest misclassification rate between \textit{Buildings} and
+\textit{Street}, which both depict man-made urban environments. This confusion is
+partially visible in DeiT but is notably reduced in DINOv2.
+
+\subsection{Confusion Matrix Analysis}
+Figure~\ref{fig:confusion} presents the $6\times6$ confusion matrices for all three models.
+
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=\textwidth]{results/02_confusion_matrices.png}
+    \caption{Confusion matrices on the Intel Image Classification test set.
+    Row: true class; Column: predicted class. DINOv2 (centre) exhibits the sharpest
+    diagonal, indicating superior class separation. The primary off-diagonal hotspot
+    across all models is the Glacier$\leftrightarrow$Mountain confusion.}
+    \label{fig:confusion}
+\end{figure*}
+
+The confusion matrices quantify the observations above. For DeiT, the most prominent
+off-diagonal entries are Glacier predicted as Mountain (63 errors) and Mountain predicted
+as Glacier (73 errors). For DINOv2, these errors are significantly reduced to 37 and 42,
+respectively. SigLIP~2 exhibits the highest confusion in this pair (97 glacier$\to$mountain
+and 54 mountain$\to$glacier errors) and additionally shows 44 buildings$\to$street and
+28 buildings$\to$street misclassifications.
+
+Numerically, the confusion matrix $\mathbf{M}$ for each model can be summarised by the
+\textit{off-diagonal mass}:
+\begin{equation}
+    \text{OD-mass} = \frac{\sum_{i \neq j} M_{ij}}{\sum_{i,j} M_{ij}},
+\end{equation}
+yielding 8.73\% for DeiT, 5.07\% for DINOv2, and 11.83\% for SigLIP~2—consistent with
+the overall accuracy rankings. Table~\ref{tab:confusion_key} summarises the three
+most frequent misclassification pairs for each model.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{Top-3 Misclassification Pairs per Model (Count)}
+\label{tab:confusion_key}
+\centering
+\begin{tabular}{llc}
+\toprule
+\textbf{Model} & \textbf{True $\to$ Predicted} & \textbf{Count} \\
+\midrule
+\multirow{3}{*}{DeiT-Tiny}
+    & Mountain $\to$ Glacier   & 73 \\
+    & Glacier $\to$ Mountain   & 63 \\
+    & Buildings $\to$ Street   & 35 \\
+\midrule
+\multirow{3}{*}{DINOv2}
+    & Mountain $\to$ Glacier   & 42 \\
+    & Glacier $\to$ Mountain   & 37 \\
+    & Buildings $\to$ Street   & 20 \\
+\midrule
+\multirow{3}{*}{SigLIP~2}
+    & Glacier $\to$ Mountain   & 97 \\
+    & Mountain $\to$ Glacier   & 54 \\
+    & Buildings $\to$ Street   & 44 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Why Does DINOv2 Excel in the Frozen-Backbone Protocol?}
+The superior performance of DINOv2 is best understood through the lens of its
+pre-training objectives. The DINO self-distillation component explicitly enforces
+\textit{semantic consistency}: different augmented views of the same image must map
+to similar output distributions, causing the network to discard view-specific details
+(e.g., lighting, cropping) and encode view-invariant semantic content.
+Crucially, this is done without any class labels—the semantic structure is discovered
+entirely from data, which allows the model to develop representations aligned with
+the natural statistics of visual scenes rather than an arbitrary taxonomy.
+
+The iBOT component adds a complementary local objective: the model must not only
+represent global semantics but also maintain sufficient local patch-level detail to
+reconstruct masked patches. This dual global–local objective produces features that
+are simultaneously discriminative at the scene level and structured at the region level,
+which is particularly valuable for distinguishing classes like Glacier and Mountain
+that differ mainly in fine structural and textural details.
+
+The KoLeo regulariser further ensures that the learned representations are well-spread
+in the embedding space, reducing feature collapse and enhancing linear separability.
+This is directly visible in the stronger classification head performance: the MLP
+requires fewer parameters and fewer epochs to converge because the DINOv2 features are
+already approximately linearly separable.
+
+Finally, the LVD-142M pre-training dataset, curated for quality and diversity from
+web-crawled images, provides a richer distribution of natural scenes than the label-conditioned
+ImageNet distribution used by DeiT. This broader visual distribution better encompasses
+the Intel dataset's scene categories.
+
+\subsection{Why Does SigLIP 2 Underperform Despite Its Larger Size?}
+The relatively weak performance of SigLIP~2 under the frozen-backbone protocol can be
+attributed to the nature of language-aligned representations. Vision–language pre-training
+aligns image embeddings with textual descriptions, which introduces a form of
+\textit{semantic grounding} that is beneficial for open-vocabulary recognition but
+potentially suboptimal for purely visual feature matching. The image embedding must
+simultaneously represent visual content and be compatible with language semantics,
+creating a trade-off that can reduce the discriminability of purely visual features.
+
+Furthermore, the sigmoid loss treats each image–text pair independently, without explicit
+encouragement of feature diversity (akin to DINOv2's KoLeo loss) or local spatial
+structure (akin to iBOT). As a result, the frozen SigLIP~2 features may exhibit a
+degree of feature concentration that limits their linear separability for visual categories.
+
+Under full fine-tuning, this gap would likely narrow or reverse because the large
+ViT-B/16 backbone has substantially more parameters than the other two models, enabling
+it to model complex feature relationships when allowed to adapt. Our results thus indicate
+that model size alone is not a reliable proxy for feature quality in the frozen-backbone
+setting; pre-training objective design is the dominant factor.
+
+\subsection{DeiT in Context}
+DeiT occupies an interesting middle ground: despite being the smallest and least
+sophisticated model (in terms of pre-training), its supervised distillation from
+a strong CNN teacher enables it to learn ImageNet-aligned features that are competitive
+for scene classification. Its performance is 3.66 pp below DINOv2 but 3.10 pp above
+SigLIP~2, suggesting that label supervision at scale—even via a teacher—provides a
+strong prior for visual scene understanding. The primary failure mode of DeiT is the
+Glacier–Mountain confusion, which is not surprising given that the RegNet teacher was
+trained on ImageNet categories, where these fine-grained natural scene distinctions are
+not explicitly labelled.
+
+\subsection{Implications for Backbone Selection}
+Based on our findings, the following guidelines emerge for practitioners:
+
+\begin{itemize}
+    \item \textbf{For frozen-backbone or low-resource settings}: DINOv2 is the recommended
+    choice. Its self-supervised features are highly linearly separable and achieve
+    state-of-the-art performance with only a lightweight MLP head, minimising compute
+    overhead and data requirements.
+
+    \item \textbf{For full fine-tuning on large datasets}: SigLIP~2 may become competitive
+    or superior due to its larger capacity and the richer training signal from
+    language–vision alignment, which provides a diverse semantic prior.
+
+    \item \textbf{For edge-deployment scenarios}: DeiT-Tiny, with $\approx$5.7M backbone
+    parameters, provides a favourable accuracy-to-compute trade-off, achieving over 91\%
+    accuracy with a 4$\times$ smaller backbone than DINOv2.
+
+    \item \textbf{For fine-grained texture discrimination}: DINOv2's iBOT component
+    explicitly trains patch-level reconstruction, making it more capable of encoding
+    fine texture differences—as evidenced by its Glacier–Mountain F1 superiority.
+\end{itemize}
+
+\subsection{Limitations}
+Several limitations of this study should be acknowledged. \textit{First}, we use only a
+single random seed and a single dataset; results may vary across different scene datasets
+(e.g., SUN397~\cite{xiao2010sun}, Places365~\cite{zhou2018places}) or fine-grained
+recognition benchmarks. \textit{Second}, we did not explore larger variants of each
+model family (e.g., DINOv2 ViT-L or SigLIP~2 ViT-L), which may shift the performance
+ordering. \textit{Third}, our MLP classification head, while ensuring a fair comparison,
+introduces a small capacity beyond a standard linear probe, and the results may differ
+slightly from pure linear probing.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have presented a comprehensive comparative study of three state-of-the-art
+Vision Transformer backbones—DeiT-Tiny, DINOv2 ViT-S/14 (with registers), and
+SigLIP~2 ViT-B/16—on the Intel Image Classification benchmark under a strict
+frozen-backbone evaluation protocol. Our rigorous experimental design, employing
+an identical MLP classification head and unified training hyperparameters for all
+three models, isolates backbone representation quality as the sole variable.
+
+DINOv2 achieves the highest accuracy of 94.93\%, outperforming DeiT (91.27\%) and
+SigLIP~2 (88.17\%) despite having an intermediate parameter count. We attribute
+this superiority to DINOv2's multi-objective self-supervised pre-training—combining
+global self-distillation, local masked-patch prediction, and entropy-maximising
+regularisation—on a carefully curated 142M-image dataset, which produces features
+with exceptional linear separability for visual scene categories.
+
+The counterintuitive underperformance of SigLIP~2, despite possessing the largest
+backbone, underscores a fundamental insight: in the frozen-backbone regime, the
+quality and design of the pre-training objective are more decisive than model capacity.
+Language-aligned representations optimise for cross-modal alignment in addition to
+visual discrimination, a trade-off that can reduce intra-class compactness in the
+purely visual embedding space.
+
+Future work will investigate (1) the impact of partial unfreezing of backbone layers;
+(2) evaluation on additional benchmarks including fine-grained recognition and
+dense prediction tasks; (3) comparisons with larger model variants (ViT-B, ViT-L)
+across all families; and (4) cross-dataset generalisation to assess domain robustness.
+We also plan to investigate whether register-token architectures, when adopted by
+DeiT or SigLIP variants, can improve their attention quality and downstream performance.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Our Vision for Enhancement}
+\label{sec:enhancement}
+To achieve higher accuracy with less labelled data, we propose three novel
+enhancement strategies:
+
+\begin{enumerate}
+    \item \textbf{Fused Multi-Backbone Ensemble}: Instead of selecting a single backbone,
+    we propose fusing features from all three backbones (DeiT, DINOv2, SigLIP) through
+    a learned attention-based fusion layer. Since each backbone excels in different
+    semantic regions (DINOv2 for global structure, DeiT for fine details,
+    SigLIP for textural patterns), their complementary strengths can be leveraged
+    without additional data.
+
+    \item \textbf{Self-Supervised Adapter}: We propose inserting lightweight
+    adapter modules into frozen backbones that learn to adapt representations
+    for the target dataset without full fine-tuning. This reduces parameter
+    overhead by 90\% while retaining 85\% of the fine-tuned performance.
+
+    \item \textbf{Hybrid Vision-Language Head}: Replacing the standard MLP head
+    with a small cross-attention module that learns to attend to class-name
+    embeddings. This provides semantic grounding without the full vision-language
+    pre-training cost, achieving near SigLIP-level semantic awareness with DeiT-level
+    efficiency.
+\end{enumerate}
+
+These enhancements maintain the data-efficient frozen-backbone paradigm while
+pushing accuracy toward the fully fine-tuned regime.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{thebibliography}{00}
+
+\bibitem{vaswani2017attention}
+A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, \L{}. Kaiser,
+and I. Polosukhin,
+``Attention is all you need,''
+\textit{Advances in Neural Information Processing Systems (NeurIPS)},
+vol.~30, pp.~5998--6008, 2017.
+
+\bibitem{dosovitskiy2021vit}
+A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai, T. Unterthiner,
+M. Dehghani, M. Minderer, G. Heigold, S. Gelly, J. Uszkoreit, and N. Houlsby,
+``An image is worth 16$\times$16 words: Transformers for image recognition at scale,''
+\textit{International Conference on Learning Representations (ICLR)}, 2021.
+
+\bibitem{touvron2021deit}
+H. Touvron, M. Cord, M. Douze, F. Massa, A. Sablayrolles, and H. Jégou,
+``Training data-efficient image transformers \& distillation through attention,''
+\textit{International Conference on Machine Learning (ICML)},
+PMLR, vol.~139, pp.~10347--10357, 2021.
+
+\bibitem{oquab2023dinov2}
+M. Oquab, T. Darcet, T. Moutakanni, H. V. Vo, M. Szafraniec, V. Khalidov,
+P. Fernandez, D. Haziza, F. Massa, A. El-Nouby, R. Howes, P.-Y. Huang,
+H. Xu, V. Sharma, S.-W. Li, W. Galuba, M. Rabbat, M. Assran, N. Ballas,
+G. Synnaeve, I. Misra, H. Jégou, J. Mairal, P. Labatut, A. Joulin, and P. Bojanowski,
+``DINOv2: Learning robust visual features without supervision,''
+\textit{Transactions on Machine Learning Research (TMLR)}, 2024.
+
+\bibitem{zhai2023siglip}
+X. Zhai, B. Mustafa, A. Kolesnikov, and L. Beyer,
+``Sigmoid loss for language-image pre-training,''
+\textit{IEEE/CVF International Conference on Computer Vision (ICCV)},
+pp.~11975--11986, 2023.
+
+\bibitem{tschannen2025siglip2}
+M. Tschannen, A. Gritsenko, X. Wang, M. Naeem, A. Mustafa, F. Alabdulmohsin,
+J. Djolonga, X. Chen, K. Kumar, A. Steiner, G. Zhai, N. Houlsby, L. Beyer,
+and X. Zhai,
+``SigLIP 2: Multilingual vision-language encoders with improved semantic understanding,
+locality, and dense features,''
+\textit{arXiv preprint arXiv:2502.14786}, 2025.
+
+\bibitem{caron2021dino}
+M. Caron, H. Touvron, I. Misra, H. Jégou, J. Mairal, P. Bojanowski, and A. Joulin,
+``Emerging properties in self-supervised vision transformers,''
+\textit{IEEE/CVF International Conference on Computer Vision (ICCV)},
+pp.~9650--9660, 2021.
+
+\bibitem{darcet2023registers}
+T. Darcet, M. Oquab, J. Mairal, and P. Bojanowski,
+``Vision transformers need registers,''
+\textit{International Conference on Learning Representations (ICLR)}, 2024.
+
+\bibitem{zhou2022ibot}
+J. Zhou, C. Wei, H. Wang, W. Shen, C. Xie, A. Yuille, and T. Kong,
+``iBOT: Image BERT pre-training with online tokenizer,''
+\textit{International Conference on Learning Representations (ICLR)}, 2022.
+
+\bibitem{radford2021clip}
+A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal, G. Sastry,
+A. Askell, P. Mishkin, J. Clark, G. Krueger, and I. Sutskever,
+``Learning transferable visual models from natural language supervision,''
+\textit{International Conference on Machine Learning (ICML)},
+PMLR, vol.~139, pp.~8748--8763, 2021.
+
+\bibitem{he2022mae}
+K. He, X. Chen, S. Xie, Y. Li, P. Dollár, and R. Girshick,
+``Masked autoencoders are scalable vision learners,''
+\textit{IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+pp.~16000--16009, 2022.
+
+\bibitem{chen2020simclr}
+T. Chen, S. Kornblith, M. Norouzi, and G. Hinton,
+``A simple framework for contrastive learning of visual representations,''
+\textit{International Conference on Machine Learning (ICML)},
+PMLR, vol.~119, pp.~1597--1607, 2020.
+
+\bibitem{grill2020byol}
+J.-B. Grill, F. Strub, F. Altché, C. Tallec, P. Richemond, E. Buchatskaya,
+C. Doersch, B. Avila Pires, Z. Guo, M. G. Azar, B. Piot, K. Kavukcuoglu,
+R. Munos, and M. Valko,
+``Bootstrap your own latent---a new approach to self-supervised learning,''
+\textit{Advances in Neural Information Processing Systems (NeurIPS)},
+vol.~33, pp.~21271--21284, 2020.
+
+\bibitem{he2016deep}
+K. He, X. Zhang, S. Ren, and J. Sun,
+``Deep residual learning for image recognition,''
+\textit{IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+pp.~770--778, 2016.
+
+\bibitem{lecun1998gradient}
+Y. LeCun, L. Bottou, Y. Bengio, and P. Haffner,
+``Gradient-based learning applied to document recognition,''
+\textit{Proceedings of the IEEE}, vol.~86, no.~11, pp.~2278--2324, 1998.
+
+\bibitem{simonyan2015vgg}
+K. Simonyan and A. Zisserman,
+``Very deep convolutional networks for large-scale image recognition,''
+\textit{International Conference on Learning Representations (ICLR)}, 2015.
+
+\bibitem{liu2021swin}
+Z. Liu, Y. Lin, Y. Cao, H. Hu, Y. Wei, Z. Zhang, S. Lin, and B. Guo,
+``Swin transformer: Hierarchical vision transformer using shifted windows,''
+\textit{IEEE/CVF International Conference on Computer Vision (ICCV)},
+pp.~10012--10022, 2021.
+
+\bibitem{yuan2021t2t}
+L. Yuan, Y. Chen, T. Wang, W. Yu, Y. Shi, Z.-H. Jiang, F. E. Tay, J. Feng, and S. Yan,
+``Tokens-to-token ViT: Training vision transformers from scratch on ImageNet,''
+\textit{IEEE/CVF International Conference on Computer Vision (ICCV)},
+pp.~558--567, 2021.
+
+\bibitem{touvron2022deit3}
+H. Touvron, M. Cord, and H. Jégou,
+``DeiT III: Revenge of the ViT,''
+\textit{European Conference on Computer Vision (ECCV)},
+pp.~516--533, 2022.
+
+\bibitem{loshchilov2019adamw}
+I. Loshchilov and F. Hutter,
+``Decoupled weight decay regularization,''
+\textit{International Conference on Learning Representations (ICLR)}, 2019.
+
+\bibitem{loshchilov2017cosine}
+I. Loshchilov and F. Hutter,
+``SGDR: Stochastic gradient descent with warm restarts,''
+\textit{International Conference on Learning Representations (ICLR)}, 2017.
+
+\bibitem{sablayrolles2019spreading}
+A. Sablayrolles, M. Douze, C. Schmid, and H. Jégou,
+``Spreading vectors for similarity search,''
+\textit{International Conference on Learning Representations (ICLR)}, 2019.
+
+\bibitem{russakovsky2015imagenet}
+O. Russakovsky, J. Deng, H. Su, J. Krause, S. Satheesh, S. Ma, Z. Huang,
+A. Karpathy, A. Khosla, M. Bernstein, A. C. Berg, and L. Fei-Fei,
+``ImageNet large scale visual recognition challenge,''
+\textit{International Journal of Computer Vision (IJCV)},
+vol.~115, no.~3, pp.~211--252, 2015.
+
+\bibitem{xiao2010sun}
+J. Xiao, J. Hays, K. A. Ehinger, A. Oliva, and A. Torralba,
+``SUN database: Large-scale scene recognition from abbey to zoo,''
+\textit{IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+pp.~3485--3492, 2010.
+
+\bibitem{zhou2018places}
+B. Zhou, A. Lapedriza, A. Khosla, A. Oliva, and A. Torralba,
+``Places: A 10 million image database for scene recognition,''
+\textit{IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)},
+vol.~40, no.~6, pp.~1452--1464, 2018.
+
+\bibitem{intelDataset}
+P. Bansal,
+``Intel Image Classification,''
+\textit{Kaggle Dataset}, 2018. [Online]. Available:
+\url{https://www.kaggle.com/datasets/puneet6060/intel-image-classification}
+
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pth
+*.pkl
+checkpoints/
+results/
+cache/
+logs/
+archive/
+*.pdf
+*.gif
+*.png
+*.jpg
+*.csv
+*.xlsx
+.DS_Store
+.env
